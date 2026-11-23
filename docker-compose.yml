@@ -1,13 +1,23 @@
 services:
   novel-agent:
     build: .
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     ports:
       - "8000:8000"
     volumes:
       # Mount your .env file with API keys
-      - ./.env:/app/.env:ro
-      # Persist generated novels outside the container
-      - ./workspace:/app/workspace
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+        bind:
+          create_host_path: false
+      # Create ./workspace as your host user before starting Compose.
+      - type: bind
+        source: ./workspace
+        target: /app/workspace
+        bind:
+          create_host_path: false
     environment:
       - WORKSPACE_ROOT=/app/workspace
       - HOST=0.0.0.0

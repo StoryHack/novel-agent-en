@@ -212,14 +212,31 @@ uv run python -m src.main
 
 ### Docker
 
-```bash
-# Build and run with docker-compose
-cp .env.example .env   # edit with your API key first
-docker compose up -d
+On Linux with Docker's default UID/GID mapping, create `./workspace` as your regular host user. Compose runs the app as `1000:1000` by default. If your IDs differ, set `APP_UID` and `APP_GID` in `.env` to the values from `id -u` and `id -g`. With matching IDs, the app and your host account can edit each other's files in `./workspace`.
 
-# Or build manually
+```bash
+cp .env.example .env   # edit with your API key first
+mkdir -p workspace
+docker compose up -d --build
+```
+
+If an earlier container left `./workspace` or its contents owned by root, stop the old container and reclaim the existing files once:
+
+```bash
+docker compose stop
+sudo chown -R "$(id -u):$(id -g)" ./workspace
+docker compose up -d --build
+```
+
+To run without Compose, use the same `.env` and `workspace` paths:
+
+```bash
 docker build -t novel-agent .
-docker run -p 8000:8000 -v $(pwd)/.env:/app/.env:ro -v $(pwd)/workspace:/app/workspace novel-agent
+docker run --user "$(id -u):$(id -g)" -p 8000:8000 \
+  -e HOST=0.0.0.0 -e PORT=8000 -e WORKSPACE_ROOT=/app/workspace \
+  --mount "type=bind,source=$PWD/.env,target=/app/.env,readonly" \
+  --mount "type=bind,source=$PWD/workspace,target=/app/workspace" \
+  novel-agent
 ```
 
 ### Testing
