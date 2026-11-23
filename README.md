@@ -29,7 +29,7 @@
 
 ```bash
 git clone https://github.com/StoryHack/novel-agent-en.git
-cd novel-agent
+cd novel-agent-en
 uv sync
 ```
 
