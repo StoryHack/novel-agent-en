@@ -2,11 +2,12 @@
 
 import logging
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from ..models.bible import NovelBible
 from ..models.chapter import ChapterDraft, PolishedChapter
 from ..models.review import ReviewReport
+from ..utils.text import count_words
 from .base import BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,12 @@ class PolishedOutput(BaseModel):
     """LLM output for polished chapter."""
 
     title: str = Field(default="")
-    content: str = Field(..., description="润色后的章节正文")
-    revision_notes: str = Field(default="", description="修改说明")
+    content: str = Field(..., description="Polished chapter text", validation_alias=AliasChoices("content", "润色后的章节正文"))
+    revision_notes: str = Field(
+        default="",
+        description="Revision notes",
+        validation_alias=AliasChoices("revision_notes", "修改说明"),
+    )
 
 
 class RefinerAgent(BaseAgent):
@@ -61,43 +66,40 @@ class RefinerAgent(BaseAgent):
         suggestions_text = "\n".join(f"- {s}" for s in review.suggestions)
 
         system_default = self.build_system_prompt(
-            role="文字打磨师",
-            expertise="你是一位追求极致的文字编辑。你能让一段普通的文字变得精准、有力、"
-            "有韵味。你擅长调整句式节奏、删除冗余、增强画面感、让对话更自然。"
-            "你对AI生成的套路表达有天然的敏感。",
-            constraints=f"""文风要求：
-- 语调：{style.tone}
-- 句式风格：{style.sentence_style}
-- 禁用表达：{style.forbidden_phrases}
-- 推荐技法：{style.preferred_techniques}""",
+            role="fiction line editor",
+            expertise="Make prose precise, vivid, and engaging. Improve sentence rhythm, cut redundancy, sharpen imagery, and make dialogue sound natural. Watch for formulaic AI phrasing.",
+            constraints=f"""Style constraints:
+- Tone: {style.tone}
+- Sentence style: {style.sentence_style}
+- Expressions to avoid: {', '.join(style.forbidden_phrases) if style.forbidden_phrases else 'None'}
+- Recommended techniques: {', '.join(style.preferred_techniques) if style.preferred_techniques else 'None'}""",
         )
-        user_default = f"""请对以下章节进行润色和修改：
+        user_default = f"""Revise and polish this chapter.
 
-【审阅报告】
-总分：{review.overall_score}/10
-各维度：{review.dimension_scores}
+Review:
+Overall score: {review.overall_score:.1f}/10
+Dimension scores: {str(review.dimension_scores)}
 
-【需要修改的问题】
+Issues to address:
 {issues_text}
 
-【改进建议】
+Suggested improvements:
 {suggestions_text}
 
-【原文章节标题】{draft.title}
+Original title: {draft.title}
 
-【原文章节正文】
+Original chapter:
 {draft.content}
 
-修改重点：
-1. **句式变化**：消除重复句式，调整长短句比例
-2. **删AI味**：删除「综上所述」「值得注意的是」「在...的过程中」等机械表达
-3. **对话优化**：让每句对话更符合角色性格，删除过于功能化的台词
-4. **画面感**：增强关键场景的感官细节（视觉、听觉、触觉）
-5. **章末钩子**：确保结尾有足够的吸引力
-6. **节奏**：调整场景推进速度，避免均分笔墨"""
+1. Vary sentence structure and length.
+2. Remove formulaic phrases such as "in summary," "it is worth noting," and "in the process of."
+3. Give dialogue distinct character voices and cut lines that serve only to relay plot information.
+4. Add visual, auditory, and tactile detail to key scenes.
+5. Strengthen the ending hook.
+6. Adjust the pacing and give the most important moments room to develop."""
 
         if human_feedback:
-            user_default += f"\n\n【作者反馈】\n{human_feedback}"
+            user_default += f"\n\nAuthor feedback:\n{human_feedback}"
 
         system, user = self.render_prompts(
             "polish_chapter",
@@ -105,8 +107,8 @@ class RefinerAgent(BaseAgent):
             user_default=user_default,
             tone=style.tone,
             sentence_style=style.sentence_style,
-            forbidden_phrases=", ".join(style.forbidden_phrases) if style.forbidden_phrases else "无",
-            preferred_techniques=", ".join(style.preferred_techniques) if style.preferred_techniques else "无",
+            forbidden_phrases=", ".join(style.forbidden_phrases) if style.forbidden_phrases else "None",
+            preferred_techniques=", ".join(style.preferred_techniques) if style.preferred_techniques else "None",
             overall_score=review.overall_score,
             dimension_scores=str(review.dimension_scores),
             issues_text=issues_text,
@@ -124,7 +126,7 @@ class RefinerAgent(BaseAgent):
             max_tokens_override=8192,
         )
 
-        word_count = len(result.content.replace(" ", "").replace("\n", ""))
+        word_count = count_words(result.content)
 
         polished = PolishedChapter(
             chapter_number=draft.chapter_number,
@@ -134,13 +136,13 @@ class RefinerAgent(BaseAgent):
             revision_notes=result.revision_notes,
         )
 
-        logger.info(f"Chapter {draft.chapter_number} polished: {word_count} chars")
+        logger.info(f"Chapter {draft.chapter_number} polished: {word_count} words")
         return polished
 
     def _format_issues(self, review: ReviewReport) -> str:
         """Format review issues for the polish prompt."""
         if not review.issues:
-            return "（无特定问题）"
+            return "(no specific issues)"
 
         by_severity = {"critical": [], "major": [], "minor": [], "suggestion": []}
         for issue in review.issues:
@@ -151,10 +153,10 @@ class RefinerAgent(BaseAgent):
         for sev in ["critical", "major", "minor", "suggestion"]:
             items = by_severity.get(sev, [])
             if items:
-                lines.append(f"\n### {sev.upper()} ({len(items)}个)")
+                lines.append(f"\n### {sev.upper()} ({len(items)})")
                 for item in items:
                     lines.append(f"- [{item.category}] {item.description}")
                     if item.suggestion:
-                        lines.append(f"  建议: {item.suggestion}")
+                        lines.append(f"  Recommendations: {item.suggestion}")
 
         return "\n".join(lines)

@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 from ..models.bible import NovelBible
 from ..models.characters import CharacterRegistry
@@ -32,9 +32,17 @@ logger = logging.getLogger(__name__)
 class MasterOutlineOutput(BaseModel):
     """LLM output for master outline."""
 
-    title: str = Field(default="", description="小说标题")
-    subtitle: str | None = Field(default=None, description="副标题")
-    logline: str = Field(default="", description="一句话简介")
+    title: str = Field(default="", description="Title of the novel", validation_alias=AliasChoices("title", "小说标题"))
+    subtitle: str | None = Field(
+        default=None,
+        description="Subheading",
+        validation_alias=AliasChoices("subtitle", "副标题"),
+    )
+    logline: str = Field(
+        default="",
+        description="A brief description",
+        validation_alias=AliasChoices("logline", "一句话简介"),
+    )
     main_plot: list[PlotArc] = Field(default_factory=list)
     subplots: list[PlotArc] = Field(default_factory=list)
     volumes: list[Volume] = Field(default_factory=list)
@@ -64,25 +72,29 @@ class MasterOutlineOutput(BaseModel):
         for field in ("main_plot", "subplots"):
             if field in d and isinstance(d[field], list):
                 d[field] = [{"description": x} if isinstance(x, str) else x for x in d[field]]
-        # Coerce string volumes (Qwen3 may output "第X卷：标题...描述")
+        # "Vol. X: Title..."
         if "volumes" in d and isinstance(d["volumes"], list):
             coerced_vols = []
             for i, v in enumerate(d["volumes"]):
                 if isinstance(v, str):
-                    # Parse "第X卷：标题" or "第X卷 标题" or just "标题"
+                    # Parse, "Vol. X: Title" or "Vol. X" or just "Title."
                     import re as _re
 
                     vol_num = i + 1
                     vol_title = v
                     # Try to extract volume number from string
-                    m = _re.match(r"第\s*([\d一二三四五六七八九十]+)\s*[卷部篇]\s*[：:\s]\s*(.+)", v)
+                    m = _re.match(
+                        r"(?:Vol(?:ume)?\.?\s+(\d+)|第\s*([\d一二三四五六七八九十]+)\s*[卷部篇])\s*[：:\s]\s*(.+)",
+                        v,
+                        _re.IGNORECASE,
+                    )
                     if m:
                         # Convert Chinese number if needed (simplified: use index-based fallback)
                         try:
-                            vol_num = int(m.group(1))
+                            vol_num = int(m.group(1) or m.group(2))
                         except ValueError:
                             vol_num = i + 1
-                        vol_title = m.group(2).strip()
+                        vol_title = m.group(3).strip()
                     else:
                         # Fallback: use the whole string as title, auto-number
                         vol_title = v
@@ -103,21 +115,17 @@ class MasterOutlineOutput(BaseModel):
 
 
 def _parse_emotional_beat_string(raw: str, index: int = 0) -> dict:
-    """Parse a Chinese LLM emotional beat string into a dict.
+    """Parse a plain-text emotional beat returned by a model.
 
-    Handles formats like:
-      "压抑，强度0.9"
-      "愤怒, 强度0.7"
-      "紧张 0.8"
-      "激动：0.95"
-      "压抑（强度0.9）"   ← parenthesized intensity
+    Handles formats such as "Tension, intensity 0.9", "Anger 0.7",
+    "Excitement: 0.95", and "Dread (intensity 0.9)".
     """
     import re
 
     s = raw.strip()
 
-    # Try parenthesized intensity: "压抑（强度0.9）" or "压抑(强度0.9)"
-    m = re.search(r"[（(]\s*强度\s*([\d.]+)\s*[）)]", s)
+    # Try an intensity in parentheses.
+    m = re.search(r"[（(]\s*(?:intensity|强度)\s*:?\s*([\d.]+)\s*[）)]", s, re.IGNORECASE)
     if m:
         emotion = s[: m.start()].strip()
         intensity = float(m.group(1))
@@ -125,8 +133,8 @@ def _parse_emotional_beat_string(raw: str, index: int = 0) -> dict:
             intensity /= 10.0
         return {"position": index * 0.25, "emotion": emotion, "intensity": intensity}
 
-    # Try "情绪，强度N" / "情绪,强度N" / "情绪, 强度N"
-    m = re.search(r"[，,]\s*强度\s*([\d.]+)", s)
+    # Try a comma followed by an intensity label.
+    m = re.search(r"[，,]\s*(?:intensity|强度)\s*:?\s*([\d.]+)", s, re.IGNORECASE)
     if m:
         emotion = s[: m.start()].strip()
         intensity = float(m.group(1))
@@ -134,7 +142,7 @@ def _parse_emotional_beat_string(raw: str, index: int = 0) -> dict:
             intensity /= 10.0
         return {"position": index * 0.25, "emotion": emotion, "intensity": intensity}
 
-    # Try "情绪 N" or "情绪：N" (emotion followed by number)
+    # Try "emotion followed by number"
     m = re.search(r"[：:]\s*([\d.]+)$", s)
     if m:
         emotion = s[: m.start()].strip()
@@ -158,11 +166,11 @@ def _parse_emotional_beat_string(raw: str, index: int = 0) -> dict:
 def _parse_emotional_curve_string(raw: str) -> list[dict]:
     """Parse a comma/line-separated emotional curve string into a list of dicts.
 
-    Handles: "压抑强度0.9，愤怒强度0.7，紧张强度0.95"
+    Accepts plain-text beats separated by commas or newlines.
     """
     import re
 
-    # Split on Chinese/English commas, newlines, or "强度" runs
+    # Split on Chinese or English commas, or on newlines.
     # Strategy: split on "，" or "," and parse each fragment
     parts = re.split(r"[，,]\s*", raw.strip())
     if len(parts) <= 1:
@@ -221,7 +229,7 @@ class ChapterPlanOutput(BaseModel):
                             if "（" not in parsed["emotion"] and "(" not in parsed["emotion"]:
                                 beat["emotion"] = parsed["emotion"]
                             else:
-                                # Strip leading position number if present (e.g. "0.0 压抑" → "压抑")
+                                # Use the parsed emotion when it has a recognized intensity.
                                 import re
 
                                 cleaned = re.sub(r"^[\d.]+\s+", "", raw_emotion, count=1)
@@ -268,17 +276,14 @@ class PlotPlannerAgent(BaseAgent):
         logger.info("Creating master outline...")
 
         system = self.build_system_prompt(
-            role="故事架构师",
-            expertise="设计引人入胜的故事结构。精通三幕剧、英雄之旅、起承转合等叙事结构，"
-            "擅长规划主线、支线、转折点和章节节奏。尤其精通{genre}类型的故事设计。".format(
-                genre="、".join(config.genre)
-            ),
+            role="story architect",
+            expertise="Plan main plots, subplots, turning points, and chapter pacing for an engaging story.",
         )
 
         # Build character summary
         char_lines = []
         for cid, char in characters.characters.items():
-            char_lines.append(f"- [{cid}] {char.name}（{char.role}）: {char.motivation[:80]}")
+            char_lines.append(f"- [{cid}] {char.name} ({char.role}): {char.motivation[:80]}")
         char_summary = "\n".join(char_lines)
 
         world = bible.world
@@ -292,53 +297,38 @@ class PlotPlannerAgent(BaseAgent):
         avg_words_per_chapter = 4000
         total_chapters = max(10, config.target_word_count // avg_words_per_chapter)
 
-        user = f"""请为以下小说设计完整的故事结构：
+        user = f"""Plan the full story for this novel.
 
-【灵感】{config.inspiration}
-【题材】{", ".join(config.genre)}
-【目标读者】{config.target_readers}
-【篇幅】约{config.target_word_count}字（预估{total_chapters}章，每章约{avg_words_per_chapter}字）
+Inspiration: {config.inspiration}
+Genre: {", ".join(config.genre)}
+Target readers: {config.target_readers}
+Length: {config.target_word_count} words (about {total_chapters} chapters of {avg_words_per_chapter} words)
+Language: {config.language}
 
-【世界观】{world.name}（{world.world_type}）
-【主题】{theme_lines}
-【核心冲突】
+World: {world.name} ({world.world_type})
+Themes: {theme_lines}
+Central conflicts:
 {conflict_lines}
 
-【角色】
+Characters:
 {char_summary}
 
-请设计：
+### 1. Premise
+Give the novel a title and a one-sentence logline.
 
-### 1. 基本信息
-- 小说标题
-- 一句话简介（logline）
+### 2. Main plot (main_plot)
+Plan 3–5 major arcs, each with a goal and key beats.
 
-### 2. 主线剧情（main_plot）
-- 分配 3-5 个主要剧情弧线（arc）
-- 每个弧线包含：起止章、关键节拍（beats）
+### 3. Subplots (subplots)
+Plan 2–3 secondary arcs. Use subplot or b_plot for arc_type.
 
-### 3. 支线剧情（subplots）
-- 2-3 条支线
-- 每条标注类型（subplot / b_plot）
+### 4. Volume structure (volumes)
+Divide the story into {max(2, total_chapters // 30)}–{max(3, total_chapters // 20)} volumes. Give each a title, logline, chapter range, main events, and emotional arc.
 
-### 4. 分卷结构（volumes）
-- 将故事分为 {max(2, total_chapters // 30)} - {max(3, total_chapters // 20)} 卷
-- 每卷：标题、简介、起止章节、主要事件、情感弧线
+### 5. Key turning points (major_turning_points)
+Include at least one turning point of the following types: inciting_incident, first_plot_point, midpoint, all_is_lost, climax, or denouement.
 
-### 5. 关键转折点（major_turning_points）
-- 至少包括以下类型节点各一个：
-  - inciting_incident（激励事件）
-  - first_plot_point（第一转折点）
-  - midpoint（中点转折）
-  - all_is_lost（一切尽失）
-  - climax（高潮）
-  - denouement（结局）
-
-设计原则：
-- 确保每一章都有推动剧情的信息增量
-- 爽点分布在关键章节处
-- 主线与支线有机交织
-- 为角色弧线留出展示空间"""
+Let each chapter advance the story with new information. Place major payoffs in key chapters, connect main and secondary plots, and leave room for character growth."""
 
         result = await self.generate_structured(
             system_prompt=system,
@@ -397,50 +387,41 @@ class PlotPlannerAgent(BaseAgent):
         if memory and memory.short_term:
             prev_chapter_summary = memory.short_term.current_chapter_summary
 
-        vol_title = current_volume.title if current_volume else "未分配"
+        vol_title = current_volume.title if current_volume else "Unallocated"
         vol_logline = current_volume.logline if current_volume else ""
-        tps_text = str([(tp.turning_type, tp.description) for tp in chapter_tps]) if chapter_tps else "无特定转折点"
+        tps_text = str([(tp.turning_type, tp.description) for tp in chapter_tps]) if chapter_tps else "No specific turning point"
         char_states_text = self._format_character_states(characters, memory)
         length_range = f"{bible.rules.chapter_length_range[0]}-{bible.rules.chapter_length_range[1]}"
 
         system_default = self.build_system_prompt(
-            role="章节规划师",
-            expertise="将故事大纲拆解为可执行的章节计划。确保每章有明确的目标、冲突、"
-            "信息增量和章末钩子，让读者欲罢不能。",
+            role="chapter planner",
+            expertise="Turn an outline into an actionable scene plan, including settings, characters, and emotional beats. Give each chapter a clear goal, conflict, and hook.",
         )
-        user_default = f"""请为以下小说规划第 {chapter_number} 章的详细方案：
+        user_default = f"""Create a detailed plan for Chapter {chapter_number}.
 
-【大纲】
+Outline:
 {outline_json}
 
-【当前卷】{vol_title} — {vol_logline}
+Current volume: {vol_title} — {vol_logline}
+Turning points: {tps_text}
+Previous chapter summary: {prev_chapter_summary or 'This is the first chapter'}
 
-【本章转折点】{tps_text}
-
-【上一章摘要】{prev_chapter_summary or "这是第一章"}
-
-【角色当前状态】
+Current character states:
 {char_states_text}
 
-请设计：
+Design:
+1. An engaging chapter title.
+2. The chapter's goal, including the plot thread it advances and the outcome it must achieve.
+3. Two to five scenes, each with a location, POV character, other characters present, goal, conflict, and outcome.
+4. The central conflict.
+5. New information the reader learns.
+6. Reveals or reversals (reveals).
+7. New setups (foreshadowing).
+8. Five emotional beats, with emotion and intensity at positions 0.0, 0.25, 0.5, 0.75, and 1.0.
+9. An ending hook that makes readers want the next chapter.
+10. A target length of {length_range.split('-')[0] if '-' in length_range else '2000'}–{length_range.split('-')[1] if '-' in length_range else '4000'} words.
 
-1. **章节标题**：有吸引力的标题
-2. **本章目标**：这一章必须完成什么（推动哪条线、达成什么结果）
-3. **场景拆分**（2-5 个场景）：
-   - 每个场景设定地点、POV角色、在场角色、场景目标、冲突、结果
-4. **核心冲突**：本章的主要矛盾
-5. **信息增量**：读者在这一章能获得什么新信息
-6. **揭示**（reveals）：是否有反转或揭示
-7. **伏笔**（foreshadowing）：本章埋什么伏笔
-8. **情绪曲线**：5个情绪节点（位置0.0/0.25/0.5/0.75/1.0），标注情绪和强度
-9. **章末钩子**：如何让读者迫不及待看下一章
-10. **目标字数**：{length_range}字
-
-设计原则：
-- 场景之间要有因果链
-- 情绪有起伏，不要平铺直叙
-- 章末必须有钩子（悬念/情绪/揭示）
-- 符合{config.tone}的语调"""
+Link scenes through cause and effect. Vary the emotional intensity, end on suspense, emotion, or a reveal, and match the {config.tone} tone."""
 
         system, user = self.render_prompts(
             "plan_chapter",
@@ -451,7 +432,7 @@ class PlotPlannerAgent(BaseAgent):
             vol_title=vol_title,
             vol_logline=vol_logline,
             tps_text=tps_text,
-            prev_summary=prev_chapter_summary or "这是第一章",
+            prev_summary=prev_chapter_summary or "This is the first chapter",
             char_states=char_states_text,
             word_count_target_min=length_range.split("-")[0] if "-" in length_range else "2000",
             word_count_target_max=length_range.split("-")[1] if "-" in length_range else "4000",
@@ -504,8 +485,8 @@ class PlotPlannerAgent(BaseAgent):
                 state = state.model_dump()
 
             lines.append(
-                f"- [{cid}] {char.name}: 位置={state.get('physical', {}).get('location', '未知')}, "
-                f"情绪={state.get('emotional', {}).get('mood', '正常')}, "
-                f"弧线进度={state.get('arc_progress', 0.0):.0%}"
+                f"- [{cid}] {char.name}: Location: {state.get('physical', {}).get('location', 'Unknown')}, "
+                f"Emotion: {state.get('emotional', {}).get('mood', 'Normal')}, "
+                f"Arc progress: {state.get('arc_progress', 0.0):.0%}"
             )
         return "\n".join(lines)

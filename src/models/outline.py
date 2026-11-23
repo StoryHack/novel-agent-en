@@ -1,6 +1,7 @@
 """Master outline, volumes, chapter planning models."""
 
 import json
+import re
 import uuid
 from typing import Any
 
@@ -88,10 +89,10 @@ class PlotArc(BaseModel):
                 # Truncate description for a short name (max 20 chars)
                 d["name"] = desc[:20]
             elif "arc_type" in d:
-                type_names = {"main": "主线", "subplot": "支线", "b_plot": "副线"}
-                d["name"] = type_names.get(str(d["arc_type"]), "剧情线")
+                type_names = {"main": "Main Plot", "subplot": "Subplot", "b_plot": "Secondary Plot"}
+                d["name"] = type_names.get(str(d["arc_type"]), "Story Arc")
             else:
-                d["name"] = "剧情线"
+                d["name"] = "Story Arc"
         # Coerce beats to list[str]
         if "beats" in d:
             d["beats"] = _str_list(d["beats"])
@@ -226,12 +227,12 @@ class Scene(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_input(cls, data: Any) -> Any:
-        # Plain string → try "地点：内容" format
+        # Plain string → try "location: content"
         if isinstance(data, str):
             s = data.strip()
-            parts = s.split("：", 1)
+            parts = re.split(r"：|:\s+", s, maxsplit=1)
             if len(parts) == 2:
-                return {"setting": parts[0], "goal": parts[1]}
+                return {"setting": parts[0].strip(), "goal": parts[1].strip()}
             return {"setting": s}
         if not isinstance(data, dict):
             return data

@@ -106,19 +106,14 @@ class HumanDecisionRequest(BaseModel):
 @router.post("/projects/suggest-titles", response_model=TitleSuggestionsResponse)
 async def suggest_titles(req: SuggestTitlesRequest):
     """Generate novel title suggestions based on inspiration and genre."""
-    genre_text = "、".join(req.genre) if req.genre else "未指定"
+    genre_text = ", ".join(req.genre) if req.genre else "Unspecified"
 
     system_prompt = (
-        "你是一位资深网络文学编辑，擅长为小说取名。"
-        "根据用户提供的故事灵感和题材，生成3-5个备选书名。"
-        "要求：\n"
-        "- 书名简洁有力，2-8个字最佳\n"
-        "- 符合题材风格（如玄幻、修仙、都市等）\n"
-        "- 有吸引力，能让读者产生点击欲望\n"
-        "- 优先使用中文书名\n"
-        '- 必须返回以下JSON格式：{"titles": ["书名1", "书名2", "书名3"]}'
+        "You are a web fiction editor. Generate three to five English titles based on the user's premise and genre.\n"
+        "Aim for two to eight words per title. Match the genre and give readers a reason to click.\n"
+        'Return JSON in this format: {"titles": ["Title One", "Title Two", "Title Three"]}'
     )
-    user_prompt = f"故事灵感：{req.inspiration}\n题材：{genre_text}\n\n请为这部小说生成3-5个备选书名。"
+    user_prompt = f"Inspiration: {req.inspiration}\nGenre: {genre_text}\n\nSuggest three to five titles."
 
     class _TitleList(BaseModel):
         titles: list[str]
@@ -135,7 +130,7 @@ async def suggest_titles(req: SuggestTitlesRequest):
         return TitleSuggestionsResponse(titles=result.titles[:5])
     except Exception as e:
         logger.error(f"Title suggestion failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"生成书名失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Title generation failed: {str(e)}")
 
 
 # ============================================================
@@ -382,29 +377,22 @@ async def generate_synopsis_for_candidate(project_id: str, req: GenerateSynopsis
     agent.scheduler = scheduler
     agent.agent_type = "topic_scout"
 
-    system_prompt = """你是一个专业的网文包装策划师，擅长为网文设计高点击率的书名和简介。
+    system_prompt = """You write appealing titles and synopses for web fiction.
 
-书名要求：
-- 6-15个字
-- 突出核心卖点/金手指
-- 符合番茄免费文风格（直白、有冲突感、一眼看懂）
-- 能吸引目标读者点击
+Write a 6–15-word title that highlights the central hook or the protagonist's signature advantage. Match Fanqie's free-to-read fiction style with clear language and immediate conflict.
 
-简介要求：
-- 2-4句话，80-150字
-- 快速建立期待、明确爽点、留钩子
-- 适合做短视频推广文案
+Write a synopsis of 2–4 sentences and 80–150 words. Establish expectations quickly, signal the payoff, and leave a hook. Make it suitable for short-form video promotion.
 
-请严格按以下格式输出：
-书名：<书名>
-简介：<简介>"""
+Return this format:
+Title: <title>
+Synopsis: <synopsis>"""
 
-    user_prompt = f"""请为以下题材生成一个吸睛的书名和简介。
+    user_prompt = f"""Write a title and synopsis for this concept.
 
-题材：{req.genre_name}
-灵感：{req.inspiration or "无"}
+Genre: {req.genre_name}
+Inspiration: {req.inspiration or "None"}
 
-请直接输出书名和简介。"""
+Return only the title and synopsis."""
 
     try:
         result = await agent.generate(
@@ -417,8 +405,8 @@ async def generate_synopsis_for_candidate(project_id: str, req: GenerateSynopsis
         # Parse title and synopsis from text
         import re
 
-        title_match = re.search(r"书名[：:]\s*(.+?)(?:\n|$)", content)
-        synopsis_match = re.search(r"简介[：:]\s*(.+?)(?:\n|$)", content, re.DOTALL)
+        title_match = re.search(r"(?:Title|书名)[：:]\s*(.+?)(?:\n|$)", content, re.IGNORECASE)
+        synopsis_match = re.search(r"(?:Synopsis|简介)[：:]\s*(.+?)(?:\n|$)", content, re.DOTALL | re.IGNORECASE)
 
         title = title_match.group(1).strip() if title_match else req.genre_name
         synopsis = synopsis_match.group(1).strip() if synopsis_match else ""
@@ -447,7 +435,7 @@ async def generate_synopsis_for_candidate(project_id: str, req: GenerateSynopsis
         return {
             "genre_name": req.genre_name,
             "final_title": req.genre_name,
-            "final_synopsis": req.inspiration or f"一部{req.genre_name}题材的精彩小说",
+            "final_synopsis": req.inspiration or f"A novel in the {req.genre_name} genre.",
             "title_candidates": [],
         }
 
@@ -466,11 +454,11 @@ async def ai_generate_titles(project_id: str, req: AiTitlesRequest):
             if tr.feilu_scan and not tr.feilu_scan.scan_failed:
                 titles = [e.title for e in (tr.feilu_scan.entries or [])[:10] if e.title]
                 if titles:
-                    scan_context += "飞卢热书：" + "、".join(titles) + "\n"
+                    scan_context += "Trending on Feilu: " + ", ".join(titles) + "\n"
             if tr.fanqie_scan and not tr.fanqie_scan.scan_failed:
                 titles = [e.title for e in (tr.fanqie_scan.entries or [])[:10] if e.title]
                 if titles:
-                    scan_context += "番茄热书：" + "、".join(titles) + "\n"
+                    scan_context += "Trending on Fanqie: " + ", ".join(titles) + "\n"
 
     scheduler = get_scheduler()
     from ..agents.base import BaseAgent
@@ -478,20 +466,16 @@ async def ai_generate_titles(project_id: str, req: AiTitlesRequest):
     agent = BaseAgent.__new__(BaseAgent)
     agent.scheduler = scheduler
 
-    system_prompt = f"""你是一个专业的网文书名创作专家。你需要基于用户的灵感，结合当前榜单趋势，生成吸睛的书名。
+    system_prompt = f"""You write titles for web fiction. Use the user's inspiration and the ranking trends to suggest titles.
 
 {scan_context}
 
-书名要求：
-- 6-15个字
-- 突出核心卖点/金手指
-- 符合当前网文流行风格
-- 能吸引目标读者点击
+Each title should run 6–15 words, highlight the novel's hook or the protagonist's signature advantage, suit current web fiction trends, and appeal to the intended readers.
 """
 
-    user_prompt = f"""用户的灵感/想法：{req.inspiration}
+    user_prompt = f"""Inspiration: {req.inspiration}
 
-请生成5个有吸引力的书名，直接列出，每行一个书名，不要编号。"""
+Return five titles, one per line, without numbering."""
 
     try:
         result = await agent.generate(
@@ -505,7 +489,7 @@ async def ai_generate_titles(project_id: str, req: AiTitlesRequest):
         return {"titles": titles}
     except Exception as e:
         logger.error(f"AI title generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"生成失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate: {str(e)}")
 
 
 # ============================================================
@@ -516,8 +500,8 @@ async def ai_generate_titles(project_id: str, req: AiTitlesRequest):
 class SubmitScanRequest(BaseModel):
     """Submit platform HTML content for scanning."""
 
-    feilu_html: str | None = Field(default=None, description="飞卢榜单页面HTML/文本")
-    fanqie_html: str | None = Field(default=None, description="番茄榜单页面HTML/文本")
+    feilu_html: str | None = Field(default=None, description="HTML or text from Feilu rankings")
+    fanqie_html: str | None = Field(default=None, description="HTML or text from Fanqie rankings")
 
 
 @router.post("/projects/{project_id}/submit-scan")
@@ -602,11 +586,11 @@ async def auto_scan(project_id: str):
             "chars": len(fanqie_html) if fanqie_html else 0,
         },
         "message": (
-            "扫榜完成"
+            "Ranking scan complete"
             if (feilu_ok and fanqie_ok)
-            else "部分平台扫榜成功"
+            else "Ranking scan partially complete"
             if (feilu_ok or fanqie_ok)
-            else "自动扫榜失败，请手动粘贴榜单内容"
+            else "Automatic scan failed. Paste the rankings manually."
         ),
     }
 
@@ -672,7 +656,7 @@ async def retry_phase(project_id: str, phase: str, req: PhaseConfirmationRequest
     orchestrator = OrchestratorAgent(scheduler)
 
     label = PHASE_LABELS.get(phase, phase)
-    await ws_manager.broadcast_phase_update(project_id, phase, 0.1, f"正在重新{label}...")
+    await ws_manager.broadcast_phase_update(project_id, phase, 0.1, f"Restarting {label}...")
 
     try:
         await executor_fn(state, orchestrator, fm)
@@ -682,7 +666,7 @@ async def retry_phase(project_id: str, phase: str, req: PhaseConfirmationRequest
         raise HTTPException(status_code=500, detail=str(e))
 
     phase_data = get_phase_data(state, phase)
-    await ws_manager.broadcast_phase_update(project_id, phase, 1.0, f"{label}完成")
+    await ws_manager.broadcast_phase_update(project_id, phase, 1.0, f"{label} complete")
     await ws_manager.broadcast_phase_complete(project_id, phase, phase_data)
 
     return {"status": "retried", "phase": phase}
@@ -757,7 +741,7 @@ async def _run_graph_workflow(project_id: str):
         else:
             await ws_manager.broadcast(
                 project_id,
-                {"type": "workflow_complete", "message": "全部流程已完成！"},
+                {"type": "workflow_complete", "message": "All workflow phases complete."},
             )
     except GraphInterrupt as gi:  # older LangGraph behaviour (raise-based)
         phase = _interrupt_phase(gi)
@@ -791,7 +775,7 @@ async def _resume_graph_workflow(project_id: str, resume_payload: dict):
         else:
             await ws_manager.broadcast(
                 project_id,
-                {"type": "workflow_complete", "message": "全部流程已完成！"},
+                {"type": "workflow_complete", "message": "All workflow phases complete."},
             )
     except GraphInterrupt as gi:  # older LangGraph behaviour (raise-based)
         phase = _interrupt_phase(gi)
@@ -1037,16 +1021,16 @@ async def editor_chat(project_id: str, req: EditorChatRequest):
     scheduler = get_scheduler()
 
     mode_prompts = {
-        "analyze": "你是一位专业的小说编辑。请仔细分析以下文本，指出优点、问题和改进建议。",
-        "polish": "你是一位文字润色专家。请在保持原意和风格的前提下，润色以下文本，使其更加流畅优美。直接输出润色后的文本。",
-        "rewrite": "你是一位创意写手。请根据用户的要求，改写以下文本。",
-        "chat": "你是一位专业的写作助手，帮助用户创作和修改小说。请用中文回答。",
+        "analyze": "You are a professional novel editor. Please carefully analyse the following text, identifying strengths, problems and suggestions for improvement.",
+        "polish": "Polish the passage while preserving its meaning and style. Return the revised text.",
+        "rewrite": "You are a creative writer. Rewrite the passage according to the user's instructions.",
+        "chat": "You are a writing assistant. Help the user write and revise fiction. Use English unless the user requests another language.",
     }
 
     system = mode_prompts.get(req.mode, mode_prompts["chat"])
     user = req.message
     if req.context:
-        user += f"\n\n【参考文本】\n{req.context[:8000]}"  # Limit context
+        user += f"\n\nReference text:\n{req.context[:8000]}"  # Limit context
 
     async def generate():
         try:
@@ -1116,7 +1100,7 @@ async def edit_section(project_id: str, req: EditSectionRequest):
             from ..models.chapter import PolishedChapter
 
             existing = fm.load_chapter_markdown(ch_num)
-            title = existing.title if existing else f"第{ch_num}章"
+            title = existing.title if existing else f"Chapter {ch_num}"
             updated = PolishedChapter(chapter_number=ch_num, title=title, content=value)
             fm.save_chapter_markdown(updated)
             return {"status": "saved", "section": section}

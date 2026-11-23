@@ -29,7 +29,7 @@ class TestCleanContent:
 
     def test_normal_novel_text(self, checker):
         result = checker.check(
-            "李明站在山巅，俯瞰着脚下的世界。风从他的耳边呼啸而过，带着远古的气息。他已经在这条路上走了太久。"
+            "Li Ming stood on the peak, looking down at the world below. The wind sounded ancient. He had been on this road too long."
         )
         assert result.passed
         assert len(result.flags) == 0
@@ -90,7 +90,7 @@ class TestEdgeCases:
 
     def test_very_long_text(self, checker):
         """Safety check should handle long texts efficiently."""
-        clean_text = "这是一个很正常的中文句子。" * 1000
+        clean_text = "This is ordinary prose. " * 1000
         result = checker.check(clean_text)
         assert result.passed
 
@@ -108,7 +108,7 @@ class TestConvenienceFunction:
     """Test the module-level convenience function."""
 
     def test_check_content_safety(self):
-        result = check_content_safety("正常的中文小说内容。")
+        result = check_content_safety("A quiet scene from a novel.")
         assert result.passed
         assert isinstance(result, SafetyResult)
 
@@ -121,7 +121,7 @@ class TestCorrectionMode:
     """Test the check_with_correction method."""
 
     def test_clean_text_returns_unchanged(self, checker):
-        text = "正常的中文内容，没有任何问题。"
+        text = "This passage contains ordinary prose."
         result, corrected = checker.check_with_correction(text)
         assert result.passed
         assert corrected == text
@@ -131,7 +131,7 @@ class TestCorrectionMode:
         result, corrected = checker.check_with_correction(text)
         assert result.passed  # Warnings don't block
         assert corrected is not None
-        assert "[内容已编辑]" in corrected
+        assert "[Content edited]" in corrected
 
     def test_blocked_text_returns_none(self, checker):
         text = "这段内容包含做爱的描写。"

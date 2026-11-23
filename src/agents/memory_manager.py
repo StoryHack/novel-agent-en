@@ -2,7 +2,7 @@
 
 import logging
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from ..models.bible import NovelBible
 from ..models.chapter import ChapterDraft, Fact, PolishedChapter
@@ -32,14 +32,31 @@ GLOBAL_CHAPTERS = 100  # Every 100 chapters → global summary
 class ChapterSummaryOutput(BaseModel):
     """LLM output for chapter summary and memory updates."""
 
-    chapter_summary: str = Field(default="", description="本章摘要（200字以内）")
-    timeline_events: list[TimelineEvent] = Field(default_factory=list, description="时间线事件")
+    chapter_summary: str = Field(
+        default="",
+        description="Summary of this chapter (200 words)",
+        validation_alias=AliasChoices("chapter_summary", "本章摘要（200字以内）"),
+    )
+    timeline_events: list[TimelineEvent] = Field(
+        default_factory=list,
+        description="Timeline Events",
+        validation_alias=AliasChoices("timeline_events", "时间线事件"),
+    )
     foreshadowing_updates: list[ForeshadowingEntry] = Field(
         default_factory=list,
-        description="伏笔更新（新增/推进/回收）",
+        description="New, developed, or resolved foreshadowing",
+        validation_alias=AliasChoices("foreshadowing_updates", "伏笔更新（新增/推进/回收）"),
     )
-    world_changes: list[str] = Field(default_factory=list, description="世界观变化")
-    unresolved_issues: list[str] = Field(default_factory=list, description="未解决的问题/线索")
+    world_changes: list[str] = Field(
+        default_factory=list,
+        description="Changes in the state of the world",
+        validation_alias=AliasChoices("world_changes", "世界观变化"),
+    )
+    unresolved_issues: list[str] = Field(
+        default_factory=list,
+        description="Unresolved questions or plot threads",
+        validation_alias=AliasChoices("unresolved_issues", "未解决的问题/线索"),
+    )
 
     @field_validator("world_changes", "unresolved_issues", mode="before")
     @classmethod
@@ -123,48 +140,35 @@ class MemoryManagerAgent(BaseAgent):
             prev_summary = existing_memory.short_term.current_chapter_summary
             active_fs = existing_memory.foreshadowing.active
             prev_foreshadowing = "\n".join(
-                f"- [{e.id}] 第{e.planted_chapter}章埋下: {e.description} (预期第{e.expected_payoff_chapter}章回收)"
+                f"- [{e.id}] Introduced in Chapter {e.planted_chapter}: {e.description} (expected payoff chapter: {e.expected_payoff_chapter})"
                 for e in active_fs
             )
 
         system_default = self.build_system_prompt(
-            role="记忆管理者",
-            expertise="你是故事的忠实记录者。你精确地记录每章发生了什么、角色有什么变化、"
-            "埋下了什么伏笔、推进了什么线索。你不会遗漏任何重要信息。",
+            role="story memory manager",
+            expertise="Keep a precise record of chapter events, character changes, new foreshadowing, and developments in existing plot threads. Preserve all important information.",
         )
-        user_default = f"""请分析以下章节，更新故事记忆：
+        user_default = f"""Update the story memory for Chapter {polished.chapter_number}: {polished.title}.
 
-【第{polished.chapter_number}章】{polished.title}
+Chapter excerpt: {draft.content[:600]}
 
-【章节摘要（供参考）】{draft.content[:600]}...
-
-【本章新增事实】
+New facts:
 {self._format_facts(draft.new_facts)}
 
-【角色状态变化】
+Character state changes:
 {self._format_state_changes(draft.character_state_changes)}
 
-【上一章摘要】{prev_summary or "这是第一章"}
+Previous chapter summary: {prev_summary or 'This is the first chapter'}
 
-【活跃伏笔】
-{prev_foreshadowing or "无"}
+Active foreshadowing:
+{prev_foreshadowing or 'None'}
 
-请生成：
-
-1. **本章摘要**（200字以内，概括本章核心事件和推进）
-
-2. **时间线事件**：
-   - 提取本章中的重要时间线事件（1-3个）
-   - 每个事件标注：在故事内的时间、描述、涉及角色、重要性
-
-3. **伏笔更新**：
-   - 新增伏笔（本章埋下的新伏笔）
-   - 推进已有伏笔（如有）
-   - 回收伏笔（如有）
-
-4. **世界观变化**：本章是否改变了世界观状态
-
-5. **未解决问题**：本章留下了什么未解决的问题或线索"""
+Produce:
+1. A chapter summary of at most 200 words covering key events and developments.
+2. One to three important timeline events, with in-world time, description, characters, and importance.
+3. Foreshadowing updates for new setups, developments, and payoffs.
+4. Changes to the state of the world.
+5. Unresolved questions or clues left by the chapter."""
 
         system, user = self.render_prompts(
             "update_memory",
@@ -175,8 +179,8 @@ class MemoryManagerAgent(BaseAgent):
             chapter_excerpt=draft.content[:600],
             facts_text=self._format_facts(draft.new_facts),
             state_changes_text=self._format_state_changes(draft.character_state_changes),
-            prev_summary=prev_summary or "这是第一章",
-            prev_foreshadowing=prev_foreshadowing or "无",
+            prev_summary=prev_summary or "This is the first chapter",
+            prev_foreshadowing=prev_foreshadowing or "None",
         )
 
         result = await self.generate_structured(
@@ -277,7 +281,7 @@ class MemoryManagerAgent(BaseAgent):
         for ch in range(start_ch, end_ch + 1):
             s = memory.long_term.chapter_summaries.get(ch, "")
             if s:
-                summaries.append(f"第{ch}章: {s}")
+                summaries.append(f"Chapter {ch}: {s}")
 
         if not summaries:
             logger.warning(f"No summaries found for stage {stage_num} (chapters {start_ch}-{end_ch})")
@@ -286,35 +290,28 @@ class MemoryManagerAgent(BaseAgent):
         # Gather timeline events in this range
         stage_events = [e for e in memory.timeline if start_ch <= e.chapter <= end_ch]
         events_text = "\n".join(
-            f"- 第{e.chapter}章 {e.in_story_time}: {e.description}" for e in stage_events[-20:]
+            f"- Chapter {e.chapter} {e.in_story_time}: {e.description}" for e in stage_events[-20:]
         )
 
         system = self.build_system_prompt(
-            role="故事压缩器",
-            expertise="你能将多章内容压缩为简洁的阶段摘要，保留核心情节推进、角色变化和重要伏笔，"
-            "同时丢弃次要细节。",
+            role="story summarizer",
+            expertise="Condense chapters while retaining key plot developments, character changes, and foreshadowing.",
         )
 
-        user = f"""请将以下{STAGE_CHAPTERS}章内容压缩为一段阶段摘要（500字以内）。
+        user = f"""Condense the following {STAGE_CHAPTERS} chapters into a stage summary of at most 500 words.
 
-【章节范围】第{start_ch}章 ~ 第{end_ch}章
+Chapter range: {start_ch}–{end_ch}
 
-【各章摘要】
+Chapter summaries:
 {chr(10).join(summaries)}
 
-【关键时间线事件】
-{events_text or "无"}
+Key timeline events:
+{events_text or "None"}
 
-【当前活跃伏笔】
-{chr(10).join(f"- {e.description}" for e in memory.foreshadowing.active[:10]) or "无"}
+Active foreshadowing:
+{chr(10).join(f"- {e.description}" for e in memory.foreshadowing.active[:10]) or "None"}
 
-请生成阶段摘要，包含：
-1. 本阶段的核心情节推进（最重要的2-3条事件线）
-2. 关键角色的状态变化
-3. 重要的伏笔埋下或推进
-4. 阶段结尾的故事状态（为下一阶段提供衔接上下文）
-
-只输出摘要文本，不需要JSON格式。控制在500字以内。"""
+Cover the two or three most important plot developments, changes to major characters, important setups introduced or developed, and where the story stands at the end of the stage. Return only the summary text."""
 
         result = await self.generate(
             system_prompt=system,
@@ -344,7 +341,7 @@ class MemoryManagerAgent(BaseAgent):
             s_start = (sn - 1) * STAGE_CHAPTERS + 1
             s_end = sn * STAGE_CHAPTERS
             if s_start >= start_ch and s_end <= end_ch:
-                stage_texts.append(f"阶段{sn} (第{s_start}-{s_end}章): {memory.long_term.stage_summaries[sn]}")
+                stage_texts.append(f"Stage {sn} (Chapters {s_start}–{s_end}): {memory.long_term.stage_summaries[sn]}")
 
         if not stage_texts:
             # Fallback: use raw chapter summaries
@@ -352,7 +349,7 @@ class MemoryManagerAgent(BaseAgent):
             for ch in range(start_ch, end_ch + 1):
                 s = memory.long_term.chapter_summaries.get(ch, "")
                 if s:
-                    summaries.append(f"第{ch}章: {s}")
+                    summaries.append(f"Chapter {ch}: {s}")
             if not summaries:
                 logger.warning(f"No data for arc {arc_num}")
                 return memory
@@ -364,36 +361,28 @@ class MemoryManagerAgent(BaseAgent):
             if start_ch <= e.chapter <= end_ch and e.importance == "major"
         ]
         events_text = "\n".join(
-            f"- 第{e.chapter}章: {e.description}" for e in arc_events[-15:]
+            f"- Chapter {e.chapter}: {e.description}" for e in arc_events[-15:]
         )
 
         system = self.build_system_prompt(
-            role="故事弧压缩器",
-            expertise="你能将一个大故事弧（50章）的内容提炼为高级摘要，聚焦于弧级结构："
-            "主要冲突的演变、角色弧的推进、主题的发展。",
+            role="story arc summarizer",
+            expertise="Summarize the arc's conflicts, character development, and themes.",
         )
 
-        user = f"""请将以下{ARC_CHAPTERS}章内容压缩为一段弧摘要（800字以内）。
+        user = f"""Condense the following {ARC_CHAPTERS} chapters into an arc summary of at most 800 words.
 
-【弧范围】第{start_ch}章 ~ 第{end_ch}章
+Chapter range: {start_ch}–{end_ch}
 
-【阶段摘要】
+Stage summaries:
 {chr(10).join(stage_texts)}
 
-【重大事件】
-{events_text or "无"}
+Major events:
+{events_text or "None"}
 
-【活跃伏笔】
-{chr(10).join(f"- {e.description} (第{e.planted_chapter}章埋下)" for e in memory.foreshadowing.active[:15]) or "无"}
+Active foreshadowing:
+{chr(10).join(f"- {e.description} (introduced in Chapter {e.planted_chapter})" for e in memory.foreshadowing.active[:15]) or "None"}
 
-请生成弧摘要，包含：
-1. 本弧的主要冲突及演变
-2. 主角及其他关键角色的弧线推进
-3. 已回收的重要伏笔和仍在活跃的伏笔
-4. 世界观的重要揭示或变化
-5. 弧结尾的故事状态（为下一弧提供衔接）
-
-只输出摘要文本，控制在800字以内。"""
+Cover the arc's main conflicts and how they evolved, the development of key characters, setups resolved and still active, important world changes or revelations, and the story state at the end of the arc. Return only the summary text."""
 
         result = await self.generate(
             system_prompt=system,
@@ -413,30 +402,23 @@ class MemoryManagerAgent(BaseAgent):
         """Update the global story summary from arc summaries."""
         arc_texts = []
         for an in sorted(memory.long_term.arc_summaries.keys()):
-            arc_texts.append(f"弧{an}: {memory.long_term.arc_summaries[an]}")
+            arc_texts.append(f"Arc {an}: {memory.long_term.arc_summaries[an]}")
 
         if not arc_texts:
             logger.warning("No arc summaries for global consolidation")
             return memory
 
         system = self.build_system_prompt(
-            role="全书脉络压缩器",
-            expertise="你能将整本书的多个大弧提炼为一个简明的全局摘要，"
-            "让作者一眼看清故事的宏观结构。",
+            role="novel summarizer",
+            expertise="Summarize completed arcs so the author can see the overall structure of the novel.",
         )
 
-        user = f"""请将以下全书内容压缩为全局摘要（1000字以内）。
+        user = f"""Condense the completed arcs into a story-wide summary of at most 1,000 words.
 
-【已完成的弧】
+Completed arcs:
 {chr(10).join(arc_texts)}
 
-请生成全局摘要，包含：
-1. 故事的总体脉络（从开始到现在，经历了哪些大阶段）
-2. 主角的完整成长轨迹
-3. 已解决和仍在进行的主要冲突
-4. 当前故事所处的位置和未完成的主要线索
-
-只输出摘要文本，控制在1000字以内。"""
+Summarize the story's major phases to date, the protagonist's growth, resolved and ongoing conflicts, the current situation, and remaining plot threads. Return only the summary text."""
 
         result = await self.generate(
             system_prompt=system,
@@ -452,10 +434,10 @@ class MemoryManagerAgent(BaseAgent):
 
     def _format_facts(self, facts: list[Fact]) -> str:
         if not facts:
-            return "（无新增事实）"
-        return "\n".join(f"- [{f.category}] {f.description} (确定性: {f.certainty})" for f in facts)
+            return "(No new facts)"
+        return "\n".join(f"- [{f.category}] {f.description} (Certainty: {f.certainty})" for f in facts)
 
     def _format_state_changes(self, changes: list) -> str:
         if not changes:
-            return "（无状态变化）"
+            return "(No character state changes)"
         return "\n".join(f"- {c.character_id}: {c.attribute} ({c.old_value} → {c.new_value})" for c in changes)

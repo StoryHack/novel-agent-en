@@ -2,7 +2,7 @@
 
 import logging
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from ..models.bible import NovelBible
 from ..models.chapter import ChapterDraft
@@ -15,21 +15,45 @@ logger = logging.getLogger(__name__)
 class ReaderFeedbackOutput(BaseModel):
     """LLM output for reader simulation."""
 
-    engagement_score: float = Field(default=7.0, ge=0.0, le=10.0, description="沉浸感评分")
-    emotional_impact: str = Field(default="", description="情感冲击描述")
-    boring_sections: list[str] = Field(default_factory=list, description="可能让读者感到无聊的段落")
-    exciting_sections: list[str] = Field(default_factory=list, description="让读者兴奋的段落")
+    engagement_score: float = Field(
+        default=7.0,
+        ge=0.0,
+        le=10.0,
+        description="Reader engagement score",
+        validation_alias=AliasChoices("engagement_score", "沉浸感评分"),
+    )
+    emotional_impact: str = Field(
+        default="",
+        description="Emotional impact description",
+        validation_alias=AliasChoices("emotional_impact", "情感冲击描述"),
+    )
+    boring_sections: list[str] = Field(
+        default_factory=list,
+        description="Passages the reader might skip",
+        validation_alias=AliasChoices("boring_sections", "可能让读者感到无聊的段落"),
+    )
+    exciting_sections: list[str] = Field(
+        default_factory=list,
+        description="Passages the reader found engaging",
+        validation_alias=AliasChoices("exciting_sections", "让读者兴奋的段落"),
+    )
     continuation_likelihood: float = Field(
         default=7.0,
         ge=0.0,
         le=10.0,
-        description="读者想继续读下一章的可能性",
+        description="The reader wants to continue reading the next chapter",
+        validation_alias=AliasChoices("continuation_likelihood", "读者想继续读下一章的可能性"),
     )
     reader_questions: list[str] = Field(
         default_factory=list,
-        description="读者在阅读时可能会产生的问题",
+        description="Problems that readers may have in reading",
+        validation_alias=AliasChoices("reader_questions", "读者在阅读时可能会产生的问题"),
     )
-    issues: list[Issue] = Field(default_factory=list, description="从读者视角发现的问题")
+    issues: list[Issue] = Field(
+        default_factory=list,
+        description="Issues identified from the reader's perspective",
+        validation_alias=AliasChoices("issues", "从读者视角发现的问题"),
+    )
 
 
 class ReaderSimulatorAgent(BaseAgent):
@@ -51,32 +75,30 @@ class ReaderSimulatorAgent(BaseAgent):
 
         Returns a dict with engagement metrics and reader-centric feedback.
         """
-        reader = target_reader or "普通小说读者"
+        reader = target_reader or "General fiction reader"
         chapter_text = self._chapter_excerpt(draft.content, max_chars=6000)
 
         system_default = self.build_system_prompt(
-            role="读者体验模拟器",
-            expertise=f"""你能够完全代入{reader}的视角来阅读小说。
-你像真正的读者一样：会被钩子吸引、会在无聊处走神、会对角色产生情感投射、
-会在反转处感到震撼。你不会用编辑的眼光分析——你用的是读者的心。""",
+            role="reader experience simulator",
+            expertise=f"Read as {reader} would. Respond to hooks, boredom, emotional identification, and surprises from that reader's perspective.",
         )
-        user_default = f"""请以目标读者的身份阅读以下章节：
+        user_default = f"""Read the chapter from the intended reader's perspective.
 
-【读者画像】{reader}
-【文风】{bible.style_contract.tone}
-【题材】{bible.world.world_type}
+Reader profile: {reader}
+Tone: {bible.style_contract.tone}
+Setting type: {bible.world.world_type}
 
-【章节全文】
+Full chapter:
 {chapter_text}
 
-请以读者视角回答：
-1. **沉浸感评分**（0-10）：你有多沉浸在故事中？
-2. **情感冲击**：读完有什么感觉？兴奋？感动？期待？平淡？
-3. **无聊段落**：有没有让你想跳过的部分？（请引用具体段落）
-4. **兴奋段落**：哪些部分让你读得最投入？（请引用具体段落）
-5. **继续阅读意愿**（0-10）：多想立刻读下一章？
-6. **读者疑问**：你在阅读中产生了什么困惑或好奇？
-7. **章末钩子效果**：结尾让你多想看下一章？"""
+Report:
+1. Immersion (0–10).
+2. Your emotional response, such as excitement, anticipation, or indifference.
+3. Passages you wanted to skip, with quotes.
+4. Passages that drew you in, with quotes.
+5. Desire to continue immediately (0–10).
+6. Questions or curiosities that arose while reading.
+7. How strongly the ending made you want the next chapter."""
 
         system, user = self.render_prompts(
             "simulate_reading",

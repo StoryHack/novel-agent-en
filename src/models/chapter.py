@@ -38,7 +38,7 @@ class Fact(BaseModel):
 
         Local LLMs sometimes return a bare string instead of a structured
         Fact object — treat the string as the description.
-        Qwen3 may also use Chinese keys like 描述/类别/确定性.
+        Qwen3 may use Chinese labels for description, category, and certainty.
         """
         if isinstance(data, str):
             return {"description": data}

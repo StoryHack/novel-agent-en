@@ -82,7 +82,7 @@ class Faction(BaseModel):
         for field in ("resources", "goal", "hierarchy", "ideology"):
             val = d.get(field)
             if isinstance(val, list):
-                d[field] = "；".join(str(v) for v in val)
+                d[field] = "; ".join(str(v) for v in val)
         return d
 
 
@@ -223,7 +223,7 @@ class NovelBible(BaseModel):
     core_conflicts: list[CoreConflict] = Field(default_factory=list)
     pleasure_point_model: str = Field(
         default="",
-        description="Description of 'pleasure points' (爽点) design — what makes the story satisfying to read",
+        description="How the story delivers satisfying payoffs",
     )
     narrative_constraints: list[str] = Field(
         default_factory=list,

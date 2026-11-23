@@ -95,13 +95,13 @@ class CharacterProfile(BaseModel):
                 return int(s)
             except ValueError:
                 pass
-            # Try to extract digits, e.g. "约20岁" → 20, "3000+岁" → 3000
+            # Extract an age from values such as "about 20" or "3000+".
             import re
 
             m = re.search(r"(\d+)", s)
             if m:
                 return int(m.group(1))
-        return 0  # "未知", "不详", etc.
+        return 0  # Unknown age
 
     gender: str = Field(default="", description="Gender identity")
 

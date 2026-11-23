@@ -24,6 +24,7 @@ from langgraph.types import interrupt
 
 from ..models.common import WorkflowPhase
 from ..models.state import MainState
+from ..utils.text import count_words
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ async def _run_phase(state: MainState, config: dict, phase: str, executor_fn) ->
         while not heartbeat_stop.is_set():
             dots = (dots + 1) % 4
             await ws.broadcast_phase_update(
-                project_id, phase, 0.15 + (dots * 0.02), f"正在{label}{'.' * dots}"
+                project_id, phase, 0.15 + (dots * 0.02), f"Running {label}{'.' * dots}"
             )
             try:
                 await asyncio.wait_for(heartbeat_stop.wait(), timeout=3)
@@ -128,7 +129,7 @@ async def _run_phase(state: MainState, config: dict, phase: str, executor_fn) ->
                 pass
 
     heartbeat_task = asyncio.create_task(_heartbeat())
-    await ws.broadcast_phase_update(project_id, phase, 0.1, f"正在{label}...")
+    await ws.broadcast_phase_update(project_id, phase, 0.1, f"Running {label}...")
 
     try:
         updated = await executor_fn(state, orchestrator, fm)
@@ -137,7 +138,7 @@ async def _run_phase(state: MainState, config: dict, phase: str, executor_fn) ->
         heartbeat_task.cancel()
 
     phase_data = get_phase_data(state, phase)
-    await ws.broadcast_phase_update(project_id, phase, 1.0, f"{label}完成")
+    await ws.broadcast_phase_update(project_id, phase, 1.0, f"{label} complete")
     await ws.broadcast_phase_complete(project_id, phase, phase_data)
     return updated
 
@@ -169,7 +170,7 @@ def _make_skip_node(phase: str):
         from ..api.phase_executor import PHASE_LABELS, get_phase_data
 
         label = PHASE_LABELS.get(phase, phase)
-        await ws.broadcast_phase_update(project_id, phase, 1.0, f"{label}已存在，跳过")
+        await ws.broadcast_phase_update(project_id, phase, 1.0, f"{label} already complete")
         await ws.broadcast_phase_complete(project_id, phase, get_phase_data(state, phase))
         return state.model_dump()
 
@@ -276,7 +277,7 @@ async def chapter_write_node(state: MainState, config: RunnableConfig | None = N
         orchestrator = cfg.get("orchestrator")
         base_progress = 5 + (state.current_chapter_number * chapter_progress_increment(state))
         await ws.broadcast_phase_update(
-            project_id, "chapter_writing", (base_progress + 4) / 100, f"正在写作第{ch}章..."
+            project_id, "chapter_writing", (base_progress + 4) / 100, f"Writing Chapter {ch}..."
         )
         state = await orchestrator.write_chapter(state)
         if state.chapter_draft:
@@ -321,7 +322,7 @@ async def chapter_polish_node(state: MainState, config: RunnableConfig | None = 
         project_id = cfg.get("project_id")
         base_progress = 5 + (state.current_chapter_number * chapter_progress_increment(state))
         await ws.broadcast_phase_update(
-            project_id, "polish_revision", (base_progress + 8) / 100, f"润色第{ch}章..."
+            project_id, "polish_revision", (base_progress + 8) / 100, f"Polishing Chapter {ch}..."
         )
         if state.chapter_draft is None:
             state.chapter_draft = fm.load_chapter_draft(ch)
@@ -355,7 +356,7 @@ async def chapter_memory_node(state: MainState, config: RunnableConfig | None = 
                     chapter_number=ch,
                     title=md_title,
                     content=md_content,
-                    word_count=len(md_content),
+                    word_count=count_words(md_content),
                 )
         if state.chapter_draft is None:
             state.chapter_draft = fm.load_chapter_draft(ch)
@@ -376,7 +377,7 @@ async def chapter_advance_node(state: MainState, config: RunnableConfig | None =
 
     state.advance_chapter()
     await ws.broadcast_phase_update(
-        project_id, "chapter_loop", (base_progress + 16) / 100, f"第{ch}章完成 ✓"
+        project_id, "chapter_loop", (base_progress + 16) / 100, f"Chapter {ch} complete ✓"
     )
     return state.model_dump()
 

@@ -85,7 +85,7 @@ class MarkdownSerializer:
                 lines.append(f'title: "{title}"')
             lines.append("---")
             lines.append("")
-        lines.append(f"# 第{chapter_number}章 {title}" if title else f"# 第{chapter_number}章")
+        lines.append(f"# Chapter {chapter_number} {title}" if title else f"# Chapter {chapter_number}")
         lines.append("")
         lines.append(content)
         return "\n".join(lines)
@@ -141,7 +141,7 @@ class DocxSerializer:
 
     @staticmethod
     def _set_east_asian_font(doc) -> None:
-        """Set 宋体 as the explicit East Asian font on used styles.
+        """Set SimSun as the explicit East Asian font on used styles.
 
         python-docx's ``font.name`` only sets w:ascii/w:hAnsi (the Latin
         font). Without an explicit w:eastAsia, CJK text is left to the
@@ -157,7 +157,7 @@ class DocxSerializer:
                 continue
             rpr = st.element.get_or_add_rPr()
             rfonts = rpr.get_or_add_rFonts()
-            rfonts.set(qn("w:eastAsia"), "宋体")
+            rfonts.set(qn("w:eastAsia"), "SimSun")
 
     @staticmethod
     def chapter_to_docx(
@@ -184,7 +184,7 @@ class DocxSerializer:
             section.right_margin = Cm(3.18)
 
         # Title
-        heading_text = f"第{chapter_number}章"
+        heading_text = f"Chapter {chapter_number}"
         if title:
             heading_text += f" {DocxSerializer._normalize_text(title)}"
         heading = doc.add_heading(heading_text, level=1)
@@ -215,7 +215,7 @@ class DocxSerializer:
                 p.paragraph_format.first_line_indent = Cm(0.74)
                 style = p.style
                 style.font.size = Pt(12)
-                style.font.name = "宋体"
+                style.font.name = "SimSun"
 
         doc.save(str(file_path))
 
@@ -253,7 +253,7 @@ class DocxSerializer:
 
         # Chapters
         for chapter_number, chapter_title, content in chapters:
-            heading_text = f"第{chapter_number}章"
+            heading_text = f"Chapter {chapter_number}"
             if chapter_title:
                 heading_text += f" {DocxSerializer._normalize_text(chapter_title)}"
             doc.add_heading(heading_text, level=1)
@@ -278,7 +278,7 @@ class DocxSerializer:
                     p.paragraph_format.first_line_indent = Cm(0.74)
                     style = p.style
                     style.font.size = Pt(12)
-                    style.font.name = "宋体"
+                    style.font.name = "SimSun"
 
             # Page break after each chapter (except the last)
             if chapter_number != chapters[-1][0]:

@@ -329,7 +329,7 @@ class ModelScheduler:
 
             cn_to_en = _build_field_map(response_model)
 
-            # Unwrap nested wrapper objects like {"世界观设定": {...}}
+            # Unwrap responses grouped under a single descriptive heading.
             if isinstance(data, dict) and len(data) == 1:
                 sole_key = next(iter(data))
                 sole_val = data[sole_key]

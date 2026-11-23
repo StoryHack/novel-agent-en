@@ -2,7 +2,7 @@
 
 Implements the explicit feedback entry system required by the evaluation report:
 -  thumbs up/down (sentiment)
-- Reason tags (不符合预期/角色写崩了/情节无聊/AI味太重/其他)
+- Reason tags for negative feedback
 - Optional free-text notes
 - Timestamped records for data flywheel
 """
@@ -24,33 +24,33 @@ class FeedbackReasonTag(StrEnum):
     """Predefined reason tags for negative feedback.
 
     These map to the evaluation report's required categories:
-    - 不符合预期 (not meeting expectations)
-    - 角色写崩了 (character inconsistency / broken characterization)
-    - 情节无聊 (boring plot)
-    - AI味太重 (too much AI flavor)
-    - 其他 (other)
+    - Not meeting expectations
+    - Inconsistent characterization
+    - Boring plot
+    - Overly generic AI prose
+    - Other
     """
 
-    NOT_MEETING_EXPECTATIONS = "not_meeting_expectations"  # 不符合预期
-    CHARACTER_BROKEN = "character_broken"  # 角色写崩了
-    PLOT_BORING = "plot_boring"  # 情节无聊
-    AI_FLAVOR_HEAVY = "ai_flavor_heavy"  # AI味太重
-    PACING_ISSUE = "pacing_issue"  # 节奏问题
-    DIALOGUE_ISSUE = "dialogue_issue"  # 对话问题
-    WORLDBUILDING_INCONSISTENT = "worldbuilding_inconsistent"  # 世界观矛盾
-    OTHER = "other"  # 其他
+    NOT_MEETING_EXPECTATIONS = "not_meeting_expectations"  # Did not meet expectations
+    CHARACTER_BROKEN = "character_broken"  # Inconsistent characterization
+    PLOT_BORING = "plot_boring"  # Boring plot
+    AI_FLAVOR_HEAVY = "ai_flavor_heavy"  # Overly generic AI prose
+    PACING_ISSUE = "pacing_issue"  # Pacing issue
+    DIALOGUE_ISSUE = "dialogue_issue"  # Dialogue issue
+    WORLDBUILDING_INCONSISTENT = "worldbuilding_inconsistent"  # Inconsistent worldbuilding
+    OTHER = "other"  # Other
 
 
 # Human-readable labels for each reason tag
 REASON_TAG_LABELS: dict[FeedbackReasonTag, str] = {
-    FeedbackReasonTag.NOT_MEETING_EXPECTATIONS: "不符合预期",
-    FeedbackReasonTag.CHARACTER_BROKEN: "角色写崩了",
-    FeedbackReasonTag.PLOT_BORING: "情节无聊",
-    FeedbackReasonTag.AI_FLAVOR_HEAVY: "AI味太重",
-    FeedbackReasonTag.PACING_ISSUE: "节奏问题",
-    FeedbackReasonTag.DIALOGUE_ISSUE: "对话问题",
-    FeedbackReasonTag.WORLDBUILDING_INCONSISTENT: "世界观矛盾",
-    FeedbackReasonTag.OTHER: "其他",
+    FeedbackReasonTag.NOT_MEETING_EXPECTATIONS: "Did not meet expectations",
+    FeedbackReasonTag.CHARACTER_BROKEN: "Inconsistent characterization",
+    FeedbackReasonTag.PLOT_BORING: "Boring plot",
+    FeedbackReasonTag.AI_FLAVOR_HEAVY: "Overly generic AI prose",
+    FeedbackReasonTag.PACING_ISSUE: "Pacing issue",
+    FeedbackReasonTag.DIALOGUE_ISSUE: "Dialogue issue",
+    FeedbackReasonTag.WORLDBUILDING_INCONSISTENT: "Inconsistent worldbuilding",
+    FeedbackReasonTag.OTHER: "Other",
 }
 
 

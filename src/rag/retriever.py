@@ -31,26 +31,26 @@ class ContextRetriever:
 
         # Characters involved
         if hasattr(chapter_plan, "characters_involved") and chapter_plan.characters_involved:
-            parts.append("角色：" + "、".join(chapter_plan.characters_involved[:5]))
+            parts.append("Characters: " + ", ".join(chapter_plan.characters_involved[:5]))
 
         # Scene settings
         if hasattr(chapter_plan, "scenes") and chapter_plan.scenes:
             settings = [s.setting for s in chapter_plan.scenes[:3] if s.setting]
             if settings:
-                parts.append("地点：" + "、".join(settings))
+                parts.append("Locations: " + ", ".join(settings))
 
         # Plot goal
         if hasattr(chapter_plan, "goal") and chapter_plan.goal:
-            parts.append("情节目标：" + chapter_plan.goal[:100])
+            parts.append("Goal: " + chapter_plan.goal[:100])
 
         # Conflict
         if hasattr(chapter_plan, "conflict") and chapter_plan.conflict:
-            parts.append("冲突：" + chapter_plan.conflict[:100])
+            parts.append("Conflict: " + chapter_plan.conflict[:100])
 
         if not parts:
-            return "小说情节 角色发展 故事推进"
+            return "Novel plot, character development, and story progression"
 
-        return "。".join(parts)
+        return ". ".join(parts)
 
     def build_continuity_query(self, draft_content: str, max_chars: int = 2000) -> str:
         """Build a retrieval query for continuity checking.
@@ -129,17 +129,17 @@ class ContextRetriever:
         # Chapter summaries
         chapters = retrieval_results.get("chapters", [])
         if chapters:
-            lines.append("【语义检索：相关历史章节】")
+            lines.append("[Semantic Search: Relevant Chapter Summaries]")
             for r in chapters[:max_items_per_type]:
                 ch = r.get("metadata", {}).get("chapter_num", "?")
                 doc = r.get("document", "")
                 if doc:
-                    lines.append(f"第{ch}章 > {doc[:200]}")
+                    lines.append(f"Chapter {ch} > {doc[:200]}")
 
         # Facts
         facts = retrieval_results.get("facts", [])
         if facts:
-            lines.append("\n【语义检索：相关历史事实】")
+            lines.append("\n")
             for r in facts[:max_items_per_type]:
                 meta = r.get("metadata", {})
                 cat = meta.get("category", "")
@@ -151,18 +151,18 @@ class ContextRetriever:
         # Events
         events = retrieval_results.get("events", [])
         if events:
-            lines.append("\n【语义检索：相关历史事件】")
+            lines.append("\n")
             for r in events[:max_items_per_type]:
                 meta = r.get("metadata", {})
                 ch = meta.get("chapter_num", "?")
                 doc = r.get("document", "")
                 if doc:
-                    lines.append(f"- 第{ch}章: {doc[:150]}")
+                    lines.append(f"- Chapter {ch}: {doc[:150]}")
 
         # Foreshadowing
         fs_entries = retrieval_results.get("foreshadowing", [])
         if fs_entries:
-            lines.append("\n【语义检索：相关伏笔】")
+            lines.append("\n")
             for r in fs_entries[:max_items_per_type]:
                 meta = r.get("metadata", {})
                 status = meta.get("status", "")

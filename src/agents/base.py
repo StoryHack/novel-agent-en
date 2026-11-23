@@ -199,7 +199,7 @@ class BaseAgent(ABC):
         tail = limit - head
         return (
             content[:head]
-            + f"\n\n...（中间省略 {len(content) - limit} 字）...\n\n"
+            + f"\n\n... ({len(content) - limit} characters omitted) ...\n\n"
             + content[-tail:]
         )
 
@@ -216,21 +216,21 @@ class BaseAgent(ABC):
         Returns:
             Formatted system prompt string.
         """
-        prompt = f"""你是一位{role}。
+        prompt = f"""You are a {role}.
 
-你的专长：{expertise}
+Your expertise: {expertise}
 
-工作原则：
-1. 严格遵循给定的格式要求，输出结构化数据
-2. 基于提供的上下文信息进行创作和判断，不要凭空编造
-3. 保持一致性，注意前后逻辑连贯
-4. 用中文思考和输出（除非上下文指定了其他语言）
+Working principles:
+1. Follow the requested output format and return structured data.
+2. Base your work on the supplied context without inventing unsupported facts.
+3. Maintain internal and logical consistency.
+4. Use English unless the context specifies another language.
 """
         if constraints:
-            prompt += f"\n特别约束：\n{constraints}"
+            prompt += f"\n\nAdditional constraints:\n{constraints}"
 
         if inspiration:
-            prompt += f"\n\n【用户灵感/要求】\n{inspiration}\n请参考以上用户提供的灵感和要求进行创作。"
+            prompt += f"\n\nUser inspiration and requirements:\n{inspiration}\nUse these ideas and requirements to guide your work."
 
         return prompt
 
@@ -249,94 +249,94 @@ class BaseAgent(ABC):
         parts = []
 
         if project_config:
-            parts.append("=== 项目配置 ===")
-            parts.append(f"题材: {project_config.get('genre', [])}")
-            parts.append(f"目标读者: {project_config.get('target_readers', '')}")
-            parts.append(f"语调: {project_config.get('tone', '')}")
-            parts.append(f"语言: {project_config.get('language', 'zh-CN')}")
+            parts.append("=== Project Configuration ===")
+            parts.append(f"Genre: {project_config.get('genre', [])}")
+            parts.append(f"Target audience: {project_config.get('target_readers', '')}")
+            parts.append(f"Tone: {project_config.get('tone', '')}")
+            parts.append(f"Language: {project_config.get('language', 'en')}")
             parts.append("")
 
         if bible:
-            parts.append("=== 世界观设定 ===")
+            parts.append("=== Worldbuilding ===")
             world = bible.get("world", {})
             if world:
-                parts.append(f"世界名称: {world.get('name', '')}")
-                parts.append(f"世界类型: {world.get('world_type', '')}")
-                parts.append(f"地理: {world.get('geography', '')}")
-                parts.append(f"历史: {world.get('history', '')}")
-                parts.append(f"文化: {world.get('culture', '')}")
+                parts.append(f"World name: {world.get('name', '')}")
+                parts.append(f"World type: {world.get('world_type', '')}")
+                parts.append(f"Geography: {world.get('geography', '')}")
+                parts.append(f"History: {world.get('history', '')}")
+                parts.append(f"Culture: {world.get('culture', '')}")
                 if world.get("magic_system"):
-                    parts.append(f"魔法/力量体系: {world['magic_system']}")
+                    parts.append(f"Magic or power system: {world['magic_system']}")
 
             style = bible.get("style_contract", {})
             if style:
-                parts.append(f"文风语调: {style.get('tone', '')}")
-                parts.append(f"句式风格: {style.get('sentence_style', '')}")
+                parts.append(f"Tone: {style.get('tone', '')}")
+                parts.append(f"Sentence style: {style.get('sentence_style', '')}")
 
             themes = bible.get("themes", [])
             if themes:
                 theme_names = [t.get("name", "") for t in themes]
-                parts.append(f"主题: {', '.join(theme_names)}")
+                parts.append(f"Themes: {', '.join(theme_names)}")
 
             parts.append("")
 
         if characters:
-            parts.append("=== 角色档案 ===")
+            parts.append("=== Character Profiles ===")
             for char_id, char in characters.items():
                 if isinstance(char, dict):
                     parts.append(f"[{char_id}] {char.get('name', '')} ({char.get('role', '')})")
-                    parts.append(f"  性格: {char.get('personality', '')}")
-                    parts.append(f"  动机: {char.get('motivation', '')}")
-                    parts.append(f"  缺陷: {char.get('flaw', '')}")
+                    parts.append(f"  Personality: {char.get('personality', '')}")
+                    parts.append(f"  Motivation: {char.get('motivation', '')}")
+                    parts.append(f"  Flaw: {char.get('flaw', '')}")
                     state = char.get("current_state", {})
                     if state:
-                        parts.append(f"  当前状态: {state}")
+                        parts.append(f"  Current status: {state}")
             parts.append("")
 
         if outline:
-            parts.append("=== 大纲参考 ===")
-            parts.append(f"主线: {outline.get('logline', '')}")
+            parts.append("=== Outline Reference ===")
+            parts.append(f"Main Plot: {outline.get('logline', '')}")
             volumes = outline.get("volumes", [])
             if volumes:
                 for v in volumes:
                     if isinstance(v, dict):
-                        parts.append(f"  卷{v.get('number', '?')}: {v.get('title', '')}")
+                        parts.append(f"  Volume {v.get('number', '?')}: {v.get('title', '')}")
             parts.append("")
 
         if memory:
             # ── Short-term (previous chapter) ──
             st = memory.get("short_term", {})
             if st:
-                parts.append("=== 近期记忆 ===")
+                parts.append("=== Recent Memory ===")
                 prev = st.get("current_chapter_summary", "")
                 if prev:
-                    parts.append(f"上一章摘要: {prev}")
-                parts.append(f"未解决钩子: {st.get('unresolved_hooks', [])}")
-                parts.append(f"活跃伏笔: {st.get('active_foreshadowing', [])}")
+                    parts.append(f"Summary of the previous chapter: {prev}")
+                parts.append(f"Unresolved hooks: {st.get('unresolved_hooks', [])}")
+                parts.append(f"Active foreshadowing: {st.get('active_foreshadowing', [])}")
                 parts.append("")
 
             # ── Hierarchical summaries (long-term context) ──
             lt = memory.get("long_term", {})
             if lt:
-                parts.append("=== 上下文脉络 ===")
+                parts.append("=== Story Context ===")
                 # Current stage summary (most recent 10-chapter block)
                 stages = lt.get("stage_summaries", {})
                 if stages:
                     latest_stage = stages.get(max(stages.keys()), "")
                     if latest_stage:
-                        parts.append(f"当前阶段（最近10章）: {latest_stage}")
+                        parts.append(f"Current stage (latest 10 chapters): {latest_stage}")
 
                 # Current arc summary (most recent 50-chapter block)
                 arcs = lt.get("arc_summaries", {})
                 if arcs:
                     latest_arc = arcs.get(max(arcs.keys()), "")
                     if latest_arc:
-                        parts.append(f"当前弧（最近50章）: {latest_arc}")
+                        parts.append(f"Current arc (latest 50 chapters): {latest_arc}")
 
                 # Global summary (entire book)
                 gs = lt.get("global_summary", "")
                 if gs:
-                    parts.append(f"全书脉络: {gs}")
+                    parts.append(f"Story-wide summary: {gs}")
 
                 parts.append("")
 

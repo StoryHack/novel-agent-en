@@ -26,12 +26,12 @@ class ProjectConfig(BaseModel):
     genre: list[str] = Field(
         ...,
         min_length=1,
-        description="Genre tags, e.g. ['玄幻', '修仙']",
+        description="Genre tags, e.g. ['fantasy', 'cultivation fiction']",
     )
     target_readers: str = Field(
         ...,
         min_length=1,
-        description="Target audience description, e.g. '18-35岁男性读者'",
+        description="Target audience, e.g. 'readers ages 18–35'",
     )
     target_length: LengthCategory = Field(
         default=LengthCategory.NOVEL,
@@ -54,14 +54,14 @@ class ProjectConfig(BaseModel):
         description="Reference works or authors for style emulation",
     )
     language: str = Field(
-        default="zh-CN",
+        default="en",
         description="Primary writing language (BCP 47 tag)",
     )
 
     # --- Constraints ---
     taboo_content: list[str] = Field(
         default_factory=list,
-        description="Content to avoid, e.g. ['色情', '过度暴力', '政治敏感']",
+        description="Content to avoid, e.g. ['explicit sex', 'excessive violence', 'sensitive political topics']",
     )
     special_requirements: list[str] = Field(
         default_factory=list,

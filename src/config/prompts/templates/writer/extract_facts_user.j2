@@ -1,31 +1,24 @@
 {# Writer Agent — extract_facts user prompt #}
-请从以下章节中提取：
+Extract new story facts and state changes from this chapter.
 
-【章节正文】
+Chapter text:
 {{ content_preview }}
 
-【已知角色】{{ char_names_map }}
+Known characters: {{ char_names_map }}
 
-请提取：
+### 1. New facts (new_facts)
+Record facts established in this chapter:
+- character: New characters, abilities, or backstory
+- world: New locations, rules, or history
+- plot: New events or information
+- relationship: Relationship changes
+- item: Important objects
 
-### 1. 新增事实（new_facts）
-本章新建立的事实，分为以下类别：
-- character: 角色相关（新角色、新能力、背景揭示）
-- world: 世界观相关（新地点、新规则、新历史）
-- plot: 剧情相关（新事件、新信息）
-- relationship: 关系变化
-- item: 重要物品
+For each fact, give its unique id, category, description, and certainty. Use 1.0 for confirmed facts, 0.5 for a character's subjective belief, and 0.0 for rumors or potentially false claims.
 
-每个事实标注：
-- id: 唯一ID
-- category: 类别
-- description: 事实描述
-- certainty: 确定性（1.0=确认事实, 0.5=角色主观认知, 0.0=传闻/可能为假）
-
-### 2. 角色状态变化（state_changes）
-本章中角色状态的变化：
-- character_id: 角色ID
-- attribute: 变化的属性（如 physical.location, emotional.mood, social.status）
-- old_value: 变化前的值
-- new_value: 变化后的值
-- reason: 变化原因
+### 2. Character state changes (state_changes)
+- character_id: Character ID
+- attribute: Changed attribute, such as physical.location, emotional.mood, or social.status
+- old_value: Previous value
+- new_value: Current value
+- reason: Why it changed

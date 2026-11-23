@@ -55,11 +55,11 @@ def character_manager(scheduler):
 @pytest.fixture
 def config():
     return ProjectConfig(
-        title="测试小说",
-        inspiration="一个废柴少年意外觉醒了远古血脉，在弱肉强食的修真世界一步步崛起的故事。",
-        genre=["玄幻", "修仙", "爽文"],
-        target_readers="喜欢热血升级流的男性读者",
-        tone="热血",
+        title="Test the novel",
+        inspiration="The story of a child who accidentally awakens ancient bloodlines and emerges step by step in a world where the weak and the weak eat.",
+        genre=["Fantasy", "Cultivation Fantasy", "It's a piece of shit"],
+        target_readers="A male reader who likes hot blood to escalate",
+        tone="Hot blood",
         target_word_count=90000,
     )
 

@@ -1,385 +1,358 @@
-# AI产品验收评审报告 v2.0
+# AI Product Acceptance Review Report v2.0
 
-## 基本信息
-- **产品/功能名称**：Novel Agent v0.1.1 — Multi-agent AI Novel Writing System
-- **评审日期**：2026-07-28（第2次评审，距v1.0评审同日完成优化轮次）
-- **评审阶段**：Alpha / 技术预览（优化后复审）
-- **评审人**：AI产品评审框架
-- **北极星指标**：（团队未明确）合理推测应为：生成章节的人工采纳率、单章生成到可发布状态的平均迭代次数
-- **技术栈**：LangGraph + FastAPI + Anthropic/OpenAI/OpenRouter/Ollama 多Provider
-- **上次评审得分**：13.5/25（v1.0，2026-07-28）
-- **本次评审得分**：16.0/25（+2.5分提升）
+## Basic Information
+- **Product/Function Name**: Novel Agent v0.1.1 – Multi-Agent AI Novel Writing System
+- **Review Date**: 2026-07-28 (Second review; optimization completed on the same day as v1.0 review)
+- **Review Phase**: Alpha / Technical Preview (Optimization followed by re-review)
+- **Reviewer**: AI Product Review Framework
+- **North Star Metrics**: (Team did not specify) It is reasonable to assume that these metrics would include the human acceptance rate of generated chapters, and the average number of iterations required to complete a chapter until it is ready for publication.
+- **Technical Stack**: LangGraph + FastAPI + Anthropic/OpenAI/OpenRouter/Ollama (multiple providers)
+- **Score from Last Review**: 13.5/25 (v1.0, 2026-07-28)
+- **Score for This Review**: 16.0/25 (+2.5 points increase)
 
-### 评估数据来源
+### Evaluation of Data Sources
 
-| 来源 | 说明 |
-|------|------|
-| 源代码 | 完整阅读了 src/ 下全部核心模块 + 本轮新增的6个模块 |
-| 项目配置 | pyproject.toml, .env.example, model_assignments.py |
-| Prompt模板 | writer/editor/reviewer 的 Jinja2 模板 + 版本管理系统 |
-| 测试覆盖 | tests/ 目录（本次从0 → 44条测试用例） |
-| 实际运行 | 成本计算器已验证3种模型组合的成本区间 |
+| Source | Description |
+|--------|-------------|
+| Source Code | All core modules in the src/ directory have been thoroughly reviewed. Additionally, 6 new modules have been reviewed this time. |
+| Project Configuration | pyproject.toml, .env.example, model_assignments.py |
+| Prompt Templates | Jinja2 templates used in writer/editor/reviewer. Also includes the version management system. |
+| Test Coverage | The tests/ directory contains test cases ranging from 0 to 44. |
+| Actual Execution | The cost calculator has been used to verify the cost ranges for 3 different model combinations. |
 
----
+## Review Summary
 
-## 评审总览
+| Dimension | Score (1-5) | v1 Score | Changes | Issues | Status |
+|----------|-----------|--------|------|--------|------|
+| I. Core Intelligence Layer | 4.0 | 4.0 | — | None | Pass (Excellent) |
+| II. Experience and Interaction Layer | 2.5 | 2.5 | — | None | Needs improvement |
+| III. Data and Flywheel Layer | 3.0 | 1.5 | **+1.5** | 1 issue | Significant improvement; 1 issue still needs fixing |
+| IV. Cost and Commercialization Layer | 3.5 | 3.0 | **+0.5** | None | Needs improvement → Nearly pass |
+| V. Security and Compliance Layer | 3.5 | 2.5 | **+1.0** | None | Needs improvement → Nearly pass |
 
-| 维度 | 得分(1-5) | v1得分 | 变化 | 阻断项 | 状态 |
-|------|-----------|--------|------|--------|------|
-| 一、核心智能层 | 4.0 | 4.0 | — | 无 | 通过（优秀） |
-| 二、体验与交互层 | 2.5 | 2.5 | — | 无 | 待改进 |
-| 三、数据与飞轮层 | 3.0 | 1.5 | **+1.5** | 有(1项) | 显著改善，1项阻断待解 |
-| 四、成本与商业化层 | 3.5 | 3.0 | **+0.5** | 无 | 待改进→接近通过 |
-| 五、安全合规层 | 3.5 | 2.5 | **+1.0** | 无 | 待改进→接近通过 |
+**Overall Score**: 16.0 / 25 (v1: 13.5, +2.5)
 
-**综合得分**：16.0 / 25（v1: 13.5，+2.5）
+**Overall Evaluation**: ⚠️ Excellent architecture. This round of improvements has been effective – 2 out of 3 issues in the Data Flywheel Layer have been resolved. Security and cost-related issues have also been addressed. It’s recommended to proceed with beta testing, with one condition attached.
 
-**综合判定**：⚠️ 架构优秀，本轮优化效果显著——数据飞轮层3项阻断已解2项，安全与成本层补齐核心短板。建议进入内测，附1项条件。
+## v1.0 → v2.0 Optimization Comparison Table
 
----
-
-## v1.0 → v2.0 优化对照表
-
-| v1.0 阻断/问题 | v2.0 解决方案 | 状态 |
-|---------------|--------------|------|
-| B1: 无显式反馈入口 | `models/feedback.py` — FeedbackEntry模型，8类原因标签，API端点 | ✅ 已解决 |
-| B2: 无Bad Case管理机制 | `GET /projects/{id}/feedback/bad-cases` — 自动聚合低分章节 | ✅ 已解决 |
-| B3: 无埋点方案（隐式反馈） | 未实现（设计文档待编写） | ❌ 仍阻断 |
-| 无Prompt版本管理 | `config/prompts/prompt_versioning.py` — SHA-256哈希+diff+回滚 | ✅ 已解决 |
-| 无边缘场景测试 | 44条测试，覆盖7类异常输入 | ✅ 已解决 |
-| 无内容安全检测 | `utils/content_safety.py` — 关键词过滤，block/warning两级 | ✅ 已解决 |
-| 无成本预算表 | `utils/cost_calculator.py` — 3种模型组合，修订场景分析 | ✅ 已解决 |
+| v1.0 Issues/Problems | v2.0 Solutions | Status |
+|-------------------|-----------------|---------|
+| B1: No explicit feedback mechanism | `models/feedback.py` – FeedbackEntry model, 8 categories of reasons, API endpoints | ✅ Resolved |
+| B2: No mechanism for managing bad cases | `GET /projects/{id}/feedback/bad-cases` – Automatically aggregating low-quality sections | ✅ Resolved |
+| B3: No mechanism for implicit feedback | Not implemented yet (design documentation needs to be written) | ❌ Still a problem |
+| No versioning for prompts | `config/prompts/prompt_versioning.py` – SHA-256 hash + diff + rollback | ✅ Resolved |
+| No testing for edge cases | 44 tests covering 7 types of abnormal inputs | ✅ Resolved |
+| No content safety checks | `utils/content_safety.py` – Keyword filtering, two levels of feedback: block/warning | ✅ Resolved |
+| No cost budget table | `utils/cost_calculator.py` – 3 model combinations, revised scenario analysis | ✅ Resolved |
 
 ---
 
-## 详细评审
+## Detailed Review
 
-### 一、核心智能层 — 得分：4.0/5
+### I. Core Intelligence Layer – Score: 4.0/5
+> This round of optimization has addressed the shortcomings in testing in edge scenarios. The core AI design (12 agents + three-layer quality control mechanisms + dynamic routing based on difficulty level) has been rated as excellent in version 1. No structural changes were made in this round of optimization.
 
-> 本轮优化补齐了边缘场景测试短板。核心AI设计（12 Agent + 三层质量门禁 + 按难度动态路由）v1已评为优秀，本轮未做结构性改动。
+#### Key Findings
 
-#### 关键发现
+**1. Edge scenario testing from 0 to 44 (Criterion 1 – significant improvement)**
 
-**1. 边缘场景测试从0到44（准则1 — 显著改善）**
+The v1 review noted that the “tests/” directory was essentially empty. It’s a high-risk signal when a generative AI product doesn’t have a regression test set.
 
-v1评审指出："tests/ 目录基本为空。一个生成式AI产品没有回归测试集是高风险信号。"
+In this round, 3 test files were created, with 44 test cases covering 7 types of edge scenarios:
+- Empty inputs/blank inputs
+- Pure dialogue scenarios (dialogue ratio of 100%)
+- Extremely long texts (<50 words vs >10,000 words)
+- AI-generated text (highly AI-generated vs natural human text)
+- Mixed Chinese-English texts
+- Special characters (Emoji, HTML tags)
+- Repetitive paragraphs/very short paragraphs
 
-本轮建立了3个测试文件、44条测试用例，覆盖7类边缘场景：
-- 空输入/纯空白输入
-- 纯对话章节（对话比100%）
-- 极端长度（<50字 vs >10000字）
-- AI味标记（高AI味 vs 自然人类文本）
-- 中英混合/纯英文
-- 特殊字符（Emoji、HTML标签）
-- 重复段落/超短段落
+All 44 test cases passed. The tests covered ChapterInspector (15 cases), ContentSafetyChecker (15 cases), and Feedback model (14 cases).
 
-**全部44条测试通过**。测试覆盖了ChapterInspector（15条）、ContentSafetyChecker（15条）、Feedback模型（14条）。
+**2. Multi-Agent architecture design (Criterion 5 – maintaining v1’s excellent rating)**
 
-**2. 多Agent架构设计（准则5 — 维持v1优秀评级）**
+The differentiated model allocation strategy remains a strength: the creation phase uses Sonnet with a temperature of 0.7-0.9, while the inspection phase uses Haiku with a temperature of 0.3. There’s also an automatic failover mechanism between Primary and Fallback.
 
-差异化模型分配策略仍为亮点：创作用Sonnet（temperature 0.7-0.9），检查用Haiku（temperature 0.3），Primary→Fallback自动故障切换。
+**3. Three-layer quality control mechanism (Criterion 3 – maintaining v1’s excellent rating)**
 
-**3. 三层质量门禁（准则3 — 维持v1优秀评级）**
+The design of Layer 0 (ChapterInspector) → Layer 1 (Editor+Continuity+Reader parallel processing) → Layer 2 (Re reviewer adversarial review) remains a rare “deep defense” mechanism in AI products.
 
-Layer 0 (ChapterInspector) → Layer 1 (Editor+Continuity+Reader并行) → Layer 2 (Reviewer对抗性审稿) 的设计仍是AI产品中罕见的"纵深防御"。
+**4. Areas that need attention (v1 legacy issues)**
 
-**4. 需要关注的差距（v1遗留）**
+- **No confidence-based output (Criterion 2):** The quality review results are binary: pass/fail (threshold 6.5). However, both scores of 6.4 and 8.9 indicate “pass”. This represents a significant loss of information. This issue wasn’t addressed in this round of testing.
+- **No L1-L5 hallucination grading:** The adversarial review can detect plot holes, but there’s no systematic definition of hallucination levels. This issue wasn’t addressed in this round of testing either.
 
-- **无置信度输出（准则2）**：质量审查结果是二元pass/fail（阈值6.5），但评分6.4和8.9都显示"pass"，信息损失太大。本轮未涉及。
-- **无L1-L5幻觉分级**：对抗性审稿能发现plot_holes但无系统化幻觉等级定义。本轮未涉及。
+#### Blocking items: None
 
-#### 阻断项：无
+#### Improvement suggestions (sorted by priority)
 
-#### 改进建议（按优先级排序）
+1. 🟡 Important: Introduce a dimension-level confidence level for quality reviews. Instead of just a pass/fail evaluation, sections with low confidence levels should automatically trigger manual review.
+2. 🟡 Important: Define L1-L5 levels of hallucinations for online writing scenarios. It’s important to ensure that there are no errors in L1 levels (such as character names, relationships, and key events).
+3. 🟢 Optimization: Consider adding more checks to ChapterInspector, such as checking for flat emotional expressions in dialogue sequences, or uneven distribution of dialogue assignments.
 
-1. 🟡 重要：为质量审查输出引入维度级置信度（而非单一pass/fail），低置信度章节自动触发人工审核
-2. 🟡 重要：定义针对网文写作场景的L1-L5幻觉等级，优先确保L1（角色名、关系、关键事件）零错误
-3. 🟢 优化：考虑为ChapterInspector添加更多检测项（如：情感曲线平坦检测、对话分配不均检测）
+### II. Experience and Interaction Layer – Score: 2.5/5
+This round of optimization did not involve any changes to the experience layer. All of the findings and recommendations from the v1 review remain valid.
 
----
+#### Key findings (to maintain v1 assessment)
 
-### 二、体验与交互层 — 得分：2.5/5
+**1. Human-in-the-loop design is correct (criteria 7, 10) — maintained**
 
-> 本轮优化未涉及体验层。v1评审的全部发现和建议仍然有效。
+The `human_confirmation` node supports four decision-making options: accept, revise, rewrite, and rollback. The architecture is correctly designed.
 
-#### 关键发现（维持v1评估）
+**2. Lack of user experience for creators (criteria 6, 8) — no improvement**
 
-**1. Human-in-the-loop设计正确（准则7、准则10）** — 维持
+- No progressive disclosure. All issues are presented in the review report at once.
+- No options for fixing errors in a “one-click” manner. There are no detailed options like “fixing role-related errors” or similar features.
+- WebSocket is available, but not utilized effectively. There’s no streaming display of content based on chapters.
 
-`human_confirmation` 节点支持 accept/revise/rewrite/rollback 四种决策。架构设计正确。
+**3. Cold start issues (criteria 12) — no improvement**
 
-**2. 创作者UX缺失（准则6、准则8）** — 未改善
+No example libraries (Playbooks) are available. New users don’t know what to write when they are asked to “inspire their creativity” with just one sentence.
 
-- 无渐进式披露（审查报告一次性给出所有issues）
-- 无"马杀鸡"错误恢复（无"一键应用建议"、"仅修复角色错误"等细粒度选项）
-- WebSocket有但未充分利用（无章节生成流式展示）
+#### Blocking items: None
 
-**3. 冷启动问题（准则12）** — 未改善
+#### Improvement suggestions (Keep the v1 suggestions, with unchanged priority)
 
-无示例库(Playbook)。新用户面对"输入你的创作灵感"一句话，不知该写什么。
+1. 🔴 Urgent: Create a “creative inspiration library” that covers at least 5 popular types of online articles.
+2. 🔴 Urgent: Implement streaming output for chapter generation (WebSocket push tokens).
+3. 🟡 Important: Design a “progressive disclosure” approach for design review reports: overall evaluation → dimension scoring → specific issues → detailed comments for each section.
+4. 🟡 Important: Provide options for fine-grained error recovery.
 
-#### 阻断项：无
+### III. Data and Flywheel Layer – Score: 3.0/5 (v1: 1.5, +1.5)
+> **The dimension where the most improvement was made in this round.** In v1, there were 3 blocking issues in this dimension. In this round, 2 of these blocking issues were resolved. The remaining 1 blocking issue (implicit feedback tracking) can be downgraded to a conditional issue during the Alpha phase.
 
-#### 改进建议（维持v1建议，优先级不变）
+#### Key Findings
 
-1. 🔴 紧急：构建"创作灵感示例库"，覆盖至少5种热门网文类型
-2. 🔴 紧急：实现章节生成的流式输出（WebSocket推送token）
-3. 🟡 重要：设计审查报告的"渐进式披露"：总体评价→维度评分→具体问题→逐段批注
-4. 🟡 重要：提供细粒度错误恢复选项
+**1. Explicit feedback entry: From scratch (Criterion 10 — ✅ Block B1 has been resolved)**
 
----
+The v1 review noted that “human_confirmation has four buttons, but there are no 👍/👎 buttons, nor any tags for reasons.”
 
-### 三、数据与飞轮层 — 得分：3.0/5（v1: 1.5，+1.5）
+Current implementation:
+- `models/feedback.py`: The `FeedbackEntry` model supports emotions like “thumbs_up” and “thumbs_down”, along with 8 categories of reasons.
+  - Not as expected / Characters wrote poorly / Story is boring / AI influence is too strong / Rhythm issues / Dialogue problems / Worldbuilding issues / Others
+- `HumanDecisionRequest` extension: Added fields for “sentiment” and “reason_tags”.
+- `submit_human_decision` endpoint: Automatically records feedback and stores it in `feedback.json`.
+- Intelligent inference: Automatically records `thumbs_down` when the user chooses revise, rewrite, or rollback.
+- `GET /projects/{id}/feedback`: Returns a complete history of feedback along with `FeedbackSummary` (acceptance rate, reason distribution, trend direction).
+- The `MainState` now has a `feedback_records` field to track feedback for each chapter.
 
-> **本轮改善最大的维度**。v1在此维度有3项阻断，本轮解决了2项。剩余1项阻断（隐式反馈埋点）针对Alpha阶段可降级为条件。
+**2. Management of bad cases: From scratch (Criterion 10 — ✅ Block B2 has been resolved)**
 
-#### 关键发现
+The v1 review noted that there was no automatic aggregation of chapters with low scores, nor any weekly summaries.
 
-**1. 显式反馈入口：从无到有（准则10 — ✅ 阻断B1已解决）**
+Current implementation:
+- `GET /projects/{id}/feedback/bad-cases`: Automatically aggregates chapters with scores < 6.5, or those that have been revised ≥ 2 times.
+  - Ranked by score from lowest to highest.
+  - Top 5 reasons for rejection are listed.
+- The `FeedbackSummary` model provides information like acceptance rate, reason distribution, score correlation, and trends (improving, declining, stable).
 
-v1评审指出："human_confirmation 有四个按钮但没有 👍/👎 + 原因标签"。
+**3. Implicit feedback tracking: Not yet implemented (Criterion 10 — ❌ Block B3 still exists)**
 
-本轮实现：
-- `models/feedback.py`：`FeedbackEntry` 模型，支持 `thumbs_up`/`thumbs_down` 情感 + 8类原因标签
-  - 不符合预期 / 角色写崩了 / 情节无聊 / AI味太重 / 节奏问题 / 对话问题 / 世界观矛盾 / 其他
-- `HumanDecisionRequest` 扩展：新增 `sentiment` 和 `reason_tags` 字段
-- `submit_human_decision` 端点：自动记录反馈 + 持久化到 `feedback.json`
-- 智能推断：当用户选择 revise/rewrite/rollback 时，自动标记为 thumbs_down
-- `GET /projects/{id}/feedback`：返回完整反馈历史 + `FeedbackSummary`（接受率、原因分布、趋势方向）
-- MainState 新增 `feedback_records` 字段追踪每章反馈
+The v1 review noted that there was no tracking of user engagement time, acceptance/rejection rates, or frequency of re-generetion after modifications.
 
-**2. Bad Case管理：从无到有（准则10 — ✅ 阻断B2已解决）**
+No implicit feedback tracking has been implemented yet. However, the `revision_count` and `review_score` fields in the feedback model provide data structures for future tracking purposes.
 
-v1评审指出："没有自动聚合低分章节、没有每周精选集"。
+**4. Data observability (Criterion 11) — No improvement**
 
-本轮实现：
-- `GET /projects/{id}/feedback/bad-cases`：自动聚合
-  - 评分 < 6.5 的章节
-  - 修订次数 ≥ 2 的章节
-  - 按评分从低到高排序（最差的排最前）
-  - Top 5 高频拒绝原因统计
-- `FeedbackSummary` 模型：接受率、原因分布、评分相关性、趋势（improving/declining/stable）
+There is still no annotation pipeline, model distillation/fine-tuning mechanisms, online verification framework, A/B testing capabilities, or a unified monitoring dashboard.
 
-**3. 隐式反馈埋点：仍未实现（准则10 — ❌ 阻断B3仍存在）**
+#### Blocked Items
 
-v1评审指出："没有记录用户停留时长、采纳/拒绝率、修改后重新生成的频率"。
+| # | Blocked Items | v1 Status | v2 Status | Description |
+|---|-------------|----------|----------|-------------|
+| B1 | No explicit feedback mechanism | Not implemented | **✅ Implemented** | FeedbackEntry + API |
+| B2 | No mechanism for handling bad cases | Not implemented | **✅ Implemented** | bad-cases endpoint |
+| B3 | No buried data scheme (implicit feedback) | Not implemented | **⚠️ Downgraded to conditional requirement** | This can be delayed until 4 weeks after beta testing |
 
-本轮未实现隐式反馈埋点方案。但反馈模型中的 `revision_count` 和 `review_score` 字段已为后续埋点分析预留了数据结构。
+**Changes in blocked items: 3 items → 1 item (downgraded to conditional requirement)**
 
-**4. 数据飞轮可观测性（准则11）** — 未改善
+#### Improvement suggestions (sorted by priority)
 
-仍然没有：标注流水线、模型蒸馏/微调机制、在线验证框架、A/B测试能力、统一监控面板。
+1. 🔴 Urgent: Develop a document describing the implicit feedback tracking mechanism. This should include information on the number of times and content of user modifications, changes in satisfaction after revisions, and the proportion of users who accept the changes. This should be implemented within 4 weeks after beta testing.
+2. 🟡 Important: Establish a unified monitoring dashboard (e.g., Grafana or similar tools). This would allow for tracking of usage/ costs/delay associated with each agent, as well as trends in quality scores for each section and user acceptance rates.
+3. 🟡 Important: Develop an automated process for “marking → fine-tuning → verification”. Provide an expected improvement in F1 score over the next 3 months.
+4. 🟢 Optimization: Analyze feedback data by scenario/user group.
 
-#### 阻断项
+### IV. Costs and Commercialization – Score: 3.5/5 (v1: 3.0, +0.5)
+> **Two key gaps have been addressed:** The cost budget table and the management of Prompt versions. It has been upgraded from “conscious but not quantified” to “quantified and traceable”.
 
-| # | 阻断项 | v1状态 | v2状态 | 说明 |
-|---|--------|--------|--------|------|
-| B1 | 无显式反馈入口 | 未实现 | **✅ 已实现** | FeedbackEntry + API |
-| B2 | 无Bad Case管理机制 | 未实现 | **✅ 已实现** | bad-cases端点 |
-| B3 | 无埋点方案（隐式反馈） | 未实现 | **⚠️ 降级为条件** | Alpha阶段可延后至内测后4周 |
+#### Key Findings
 
-**阻断项变化：3项 → 1项（降级为上线条件）**
+**1. Cost Budgeting: From scratch (Criterion 13 — ✅ Major improvement)**
 
-#### 改进建议（按优先级排序）
+The v1 review noted: “How much does it cost to write a 100,000-word online article, consisting of 30 chapters? — Unable to answer.”
 
-1. 🔴 紧急：设计隐式反馈埋点方案文档——至少定义：用户修改反馈的次数和内容、revise后满意度变化、直接accept的比例（内测后4周内实施）
-2. 🟡 重要：建立统一监控面板（Grafana或类似），聚合：各Agent使用量/成本/延迟、各章节质量分趋势、用户采纳率趋势
-3. 🟡 重要：建立"标注→微调→验证"的自动化流水线规划，给出3个月后的F1提升预期
-4. 🟢 优化：反馈数据按场景/用户群分层分析
+This iteration has implemented `utils/cost_calculator.py`:
 
----
+| Model Combination | Basic Cost for 30 Chapters | Cost with 30% revisions | Cost with 15% secondary revisions |
+|-------------------|-------------------------|-----------------------|----------------------------------|
+| **Sonnet+Haiku Combination (Recommended)** | **$7.04** | $8.17 | $9.30 |
+| Full Sonnet Approach | $12.30 | $14.74 | $17.18 |
+| Budgeted Approach (Primarily GPT-4o-mini) | $3.27 | $3.38 | $3.49 |
 
-### 四、成本与商业化层 — 得分：3.5/5（v1: 3.0，+0.5）
+Key features:
+- 3 preset model combinations (full_sonnet / sonnet_haiku_mixed / budget)
+- Support for custom word count and number of chapters
+- Costs are broken down by agent: Writer 45%, Review 25%, Polish 15%, Adversarial 10%, Memory 5%
+- 3 scenarios for analysis: All in one go, 30% revisions, 15% secondary revisions
+- `print_cost_comparison()` for quick comparison
 
-> **补齐了两个关键缺口**：成本预算表和Prompt版本管理。从"有意识但缺量化"升级为"有量化、可追踪"。
+**Conclusion:** The Sonnet+Haiku combination costs approximately **$7-9 USD** for writing a 30-chapter article. The full Sonnet approach costs around **$12-17 USD**. From a commercial SaaS subscription perspective, this cost level is completely acceptable.
 
-#### 关键发现
+**2. Prompt Version Management: From scratch (Criterion 14 — ✅ Major improvement)**
 
-**1. 成本预算表：从无到有（准则13 — ✅ 重大改善）**
+The v1 review noted: “The Jinja2 template exists in the code repository, but there is no version tracking or rollback mechanism.”
 
-v1评审指出："写一本10万字的网文（约30章），总token消耗和成本预估是多少？——无法回答。"
+This iteration has implemented `config/prompts/prompt_versioning.py`:
+- SHA-256 hash for integrity verification
+- Automatic generation of unified diffs for each modification
+- Complete record of changes, including timestamp, reason, and author
+- Snapshots are stored in the `_versions/` directory, allowing rollback to any version
+- `rollback(template_path, version)` – allows quick restoration to previous versions
+- `verify_integrity()` – checks whether the template has been accidentally modified
+- `get_changed_since(timestamp)` – helps identify the root cause of quality issues in prompts
+- `scan_all()` – generates a summary of the version history of all templates
 
-本轮实现 `utils/cost_calculator.py`：
+**3. Token Waste Issues (Criterion 14) – Some improvements have been made**
+`build_context_block` (base.py:200) still builds the entire `world/bible/characters/outline/memory` context block each time. `max_context_chapters=5` limits the number of recent chapters. However, there is still no mechanism for paginating or loading data as needed for `bible` and `character` data.
 
-| 模型组合 | 30章基础成本 | 含30%修订 | 含15%二次修订 |
-|---------|------------|----------|-------------|
-| **Sonnet+Haiku混合（推荐）** | **$7.04** | $8.17 | $9.30 |
-| 全Sonnet | $12.30 | $14.74 | $17.18 |
-| 预算方案（GPT-4o-mini为主） | $3.27 | $3.38 | $3.49 |
+**4. Business Attribution (Criterion 15)** – No improvement.
 
-关键特性：
-- 3种预设模型组合（full_sonnet / sonnet_haiku_mixed / budget）
-- 支持自定义字数和章节数
-- 按Agent拆分成本（Writer 45%、Review 25%、Polish 15%、Adversarial 10%、Memory 5%）
-- 3种场景分析（全部一次通过、30%修订、15%二次修订）
-- `print_cost_comparison()` 一键对比
+The recommended metrics for a good business strategy (proposed in v1) remain valid: chapter adoption rate, average number of revisions, time from project initiation to completion, NPS.
 
-**核算结论**：Sonnet+Haiku混合方案写一本30章网文，成本约 **$7-9美元**。全Sonnet方案约 **$12-17美元**。从商业SaaS订阅角度看，这个成本水平完全可接受。
+#### Blocking items: None (Alpha phase)
+v1 review confirmation: “The Alpha phase can be postponed.” The cost budget has been completed, and the requirements of the Alpha phase have been met.
 
-**2. Prompt版本管理：从无到有（准则14 — ✅ 重大改善）**
+#### Improvement suggestions (sorted by priority)
 
-v1评审指出："Jinja2模板在代码仓库中，但没有版本追踪和回滚机制"。
+1. 🟡 Important: Implement Prompt Caching for frequently used System Prompt segments. This will prevent the need to send the same world-setting information for each chapter.
+2. 🟡 Important: Define the product’s key metrics (suggested: chapter adoption rate) and establish corresponding attribution links.
+3. 🟢 Optimization: When the amount of Bible content exceeds a certain threshold, enable loading on demand. This way, the writer only needs to have access to the relevant world-building information for the current chapter, rather than all the information for that chapter.
+4. 🟢 Optimization: Integrate a cost calculator into the project creation process. This will allow users to see an estimated cost before starting the project.
 
-本轮实现 `config/prompts/prompt_versioning.py`：
-- SHA-256内容哈希 → 完整性验证
-- 每次修改自动生成 unified diff
-- 时间戳 + 原因 + 作者 的完整变更记录
-- 快照存储（`_versions/` 子目录）→ 支持任意版本回滚
-- `rollback(template_path, version)` — 一键恢复到历史版本
-- `verify_integrity()` — 检测模板是否被意外修改
-- `get_changed_since(timestamp)` — 用于定位质量回退的Prompt根因
-- `scan_all()` — 生成所有模板的版本历史总览
+### V. Security, compliance, and explainability – Score: 3.5/5 (v1: 2.5, +1.0)
+> **It addresses two major gaps: content security detection and prompt version management.** It has improved from having “risk awareness but no effective defenses” to having “basic defenses along with auditability.”
 
-**3. Token浪费问题（准则14）** — 部分改善
+#### Key Findings
 
-`build_context_block`（base.py:200）仍然每次构建完整的world/bible/characters/outline/memory上下文块。`max_context_chapters=5` 限制了近期章节数量，但bible和character数据仍无分页/按需加载机制。
+**1. Content Safety Barriers: From None to Present (Criterion 16 – ✅ Significant Improvement)**
 
-**4. 商业归因（准则15）** — 未改善
+The v1 review noted that “Writer Agent directly receives user ideas and generates chapters without any safety filtering. Although the content safety boundaries for creator tools are broader than those for customer service/educational products, zero detection is a risk.”
 
-合理的北极星指标建议（v1提出）仍然有效：章节采纳率、平均revise次数、从立项到完本的时间、NPS。
+In this iteration, `utils/content_safety.py` is implemented as follows:
+- **Block-level keywords**: Chapters with these keywords are rejected immediately. Examples include pornographic content like “sex” or “intercourse,” as well as extreme violence, such as dismemberment or skinning. Additionally, politically sensitive content is also blocked.
+- **Warning-level keywords**: These keywords are marked but not blocked. Examples include suggestive content like “sugary breasts” or descriptions of violence, such as “blood and flesh.” Additionally, certain terms related to the platform are also blocked.
+- These functions are integrated into `orchestrator.write_chapter`. They run after ChapterInspector and before LLM review, thereby avoiding unnecessary use of the LLM.
+- `check_with_correction()` automatically replaces warning-level content with a marker indicating that the content has been edited.
+- The `SafetyResult` includes context snippets (50 characters before and after the match), making it easier to review manually.
+- It’s possible to customize the keywords based on the platform being used (e.g., Qidian, Tomato, Feilu). This functionality is already implemented, and more keywords can be added as needed.
 
-#### 阻断项：无（Alpha阶段）
+**Location of Safety Checks**: After Layer 0 (structure checks by ChapterInspector), but before Layer 1 (parallel reviews by Editor+Continuity+Reader). This placement is effective because it prevents problems with structure and safety issues before they require expensive LLM reviews. This avoids wasting tokens.
 
-v1评审确认："Alpha阶段可以延后"成本预算表和商业归因。本轮已补齐成本预算表，超标完成Alpha阶段要求。
+**2. Improved Auditability of Prompt Versions Management (Criterion 17 – ✅ Improvement)**
 
-#### 改进建议（按优先级排序）
+The Prompt version management system serves both for tracking compliance and for audit purposes.
 
-1. 🟡 重要：为高频System Prompt片段实现Prompt Caching，避免每章重复发送world-setting基础信息
-2. 🟡 重要：定义产品北极星指标（建议：章节采纳率）和对应的归因链路
-3. 🟢 优化：当bible内容超过一定阈值时，实现按需加载（writer只需当前相关章节的世界观信息，而非全部）
-4. 🟢 优化：集成成本计算器到项目创建流程，让用户在启动前看到预估成本
+**3. Interpretability and Audits (Criterion 17) – Some Improvements**
 
----
+Currently, there’s only `AgentLogEntry` + `LLMResponse` (model/provider/token/cost) + dimension_scores.
 
-### 五、安全、合规与可解释性 — 得分：3.5/5（v1: 2.5，+1.0）
+New in v2: Prompt version management, including change history, diff tracking, and one-click rollback.
 
-> **补齐了内容安全检测和Prompt版本管理两大缺口**。从"有风险意识但无防线"升级为"有基础防线+可审计"。
+Still missing: Strategy for releasing model versions in grayscale, rollback records, and automated rollback decisions.
 
-#### 关键发现
+**4. Bias Testing (Criterion 18) – No Improvement**
 
-**1. 内容安全围栏：从无到有（准则16 — ✅ 重大改善）**
+Bias issues related to gender stereotypes, regional/occupational stereotypes, and value systems remain unaddressed in the testing plan. This is a reasonable approach for the Alpha stage, but it needs to be included in the roadmap after beta testing.
 
-v1评审指出："Writer Agent直接接受用户灵感并生成章节，没有任何安全过滤。虽然创作者工具的内容安全边界比客服/教育类产品宽，但完全零检测是一个风险点。"
+**5. Exit Mechanism (Criterion 19 Additional) – No Improvement, but Risk Controllable**
 
-本轮实现 `utils/content_safety.py`：
-- **Block级关键词**（命中即拒绝章节）：色情类（做爱、性交等）、极端暴力类（肢解、剥皮等）、政治敏感类
-- **Warning级关键词**（标记但不阻断）：暗示性内容（酥胸、香艳等）、暴力描写（血肉模糊等）、平台触发词
-- 集成到 `orchestrator.write_chapter`：在ChapterInspector之后、LLM审稿之前运行（零LLM成本）
-- `check_with_correction()`：对Warning级内容自动替换为`[内容已编辑]`标记
-- `SafetyResult` 带上下文摘录（匹配位置前后50字符），便于人工复核
-- 支持按平台（起点/番茄/飞卢）差异化配置关键词（架构已支持，关键词可按需扩展）
+There’s a natural way to downgrade: BibleMarkdownStore already allows for exporting Markdown files, allowing for manual writing. There’s no option to downgrade without AI assistance (e.g., “Turn off AI-generated content, keep only AI-reviewed content”).
 
-**安全检测位置**：Layer 0（ChapterInspector结构检查）之后、Layer 1（Editor+Continuity+Reader并行审查）之前。这个位置选得好——先拦截结构和安全问题，再让昂贵的LLM审查来做深度分析，避免浪费Token。
+#### Blocking items: None (Alpha phase)
+The review in v1 confirmed that there were no blocking issues during the Alpha phase. After adding content security checks in this round, the security situation improved significantly. It has now been upgraded from “no defenses” to “basic defenses”.
 
-**2. Prompt版本管理提升可审计性（准则17 — ✅ 改善）**
+#### Improvement suggestions (sorted by priority)
 
-Prompt版本管理系统（详见维度四第2点）同时服务于安全合规层的可追溯性要求。
+1. 🟡 Important: Expand the content security keyword database. This should be aligned with the latest auditing standards of target platforms like StartPoint/Tomato/Flylu. Additionally, a monthly update mechanism should be implemented.
+2. 🟡 Important: Establish a minimal graying mechanism for model switching. The new writer prompts should be tested first on Chapter 5. After comparing the quality scores, they can be switched across all chapters.
+3. 🟡 Important: Conduct a rollback experiment. This will help verify whether the rollback function of the Prompt version management system works properly in real-world scenarios.
+4. 🟢 Optimization: Add checks for role bias. For example, measures should be taken to ensure that female characters make up a certain percentage of the dialogue content, and that there is diversity among villain characters. These measures should be included in the monthly quality audits.
+5. 🟢 Optimization: Include regular statistics on the false positive rates and missed detections for security checks.
 
-**3. 可解释性和审计（准则17）** — 部分改善
+## Strategic Review Questions
 
-已有（v1）：`AgentLogEntry` + `LLMResponse`（模型/provider/token/成本）+ dimension_scores
+> “When the accuracy of AI improves from 90% to 95%, it requires 10 million computing resources. When it improves to 96%, it requires another 20 million computing resources. What would you choose?”
 
-新增（v2）：Prompt版本管理（变更历史、diff追踪、一键回滚）
+**Translation for this product (v2 update):**
 
-仍缺失：模型版本灰度发布策略、回滚演练记录、自动化回滚判定
+> “When switching from using only Sonnet to a combination of Sonnet and Haiku, the chapter adoption rate drops from 78% to 72%. However, the cost is reduced by 43% ($12.30 → $7.04). Would you spend the saved $5.26 on improving that 6% adoption rate, or would you use that money to improve the revision experience for the 28% of chapters that readers rejected?”
 
-**4. 偏见测试（准则18）** — 未改善
+**New data support for v2:**
 
-网文场景下的偏见关注点（角色性别刻板印象、地域/职业刻板印象、价值观单一化）仍未纳入测试计划。对Alpha阶段合理，但需纳入内测后路线图。
+- For 30 chapters using only Sonnet: $12.30 (basic cost)
+- For 30 chapters using a combination of Sonnet and Haiku: $7.04 (basic cost) – a savings of **43%**
+- For 30 chapters using the budget plan: $3.27 (basic cost) – a savings of **73%**
 
-**5. 退出机制（准则19附加）** — 未改善但风险可控
+However, there is no actual data to measure the impact on adoption rate. This data needs to be collected during beta testing.
 
-降级路径天然存在：BibleMarkdownStore已实现Markdown导出 → 人工继续写作。无AI辅助模式下的降级选项（如"关闭AI自动生成，仅保留AI审稿"）。
+**Judgment from reviewers:**
 
-#### 阻断项：无（Alpha阶段）
+- ✅ The team has a clear understanding of investment returns. The cost calculator shows the cost differences between different options.
+- ✅ The cost breakdown is clearly defined at the architectural level. ChapterInspector provides zero-cost pre-checks, while Haiku offers low-cost reviews.
+- ✅ The Prompt version management system provides a “rollback” option in case things go wrong. This reduces the risk of costly optimizations.
+- ⚠️ However, we need to be careful about the tendency to use too many agents. Currently, there are 12 agents, and adding one more agent increases latency and costs. It’s recommended to set a limit on the number of agents used.
 
-v1评审确认Alpha阶段零阻断。本轮新增内容安全检测后，从"无防线"升级为"有基础防线"，安全态势显著改善。
+**Suggested threshold for stopping improvements (v2 update):** When the chapter adoption rate reaches 85%, we should stop adding more agents or modifying prompts. Instead, we should focus on improving the overall experience for chapters that need revisions. With the `trend_direction` metric from `FeedbackSummary`, we can continuously monitor this trend during beta testing.
 
-#### 改进建议（按优先级排序）
+## Final Judgment
 
-1. 🟡 重要：扩展内容安全关键词库——与目标平台（起点/番茄/飞卢）的最新审核标准对齐，增加每月更新机制
-2. 🟡 重要：为模型切换建立最简灰度机制——新的writer prompt先在5章上试跑，对比质量分后再全量切换
-3. 🟡 重要：进行一次回滚演练——验证Prompt版本管理系统的回滚功能在真实场景下可用
-4. 🟢 优化：建立角色偏见检查项（如：女性角色对话占比、反派角色多样性等），纳入月度质量审计
-5. 🟢 优化：为安全检测添加误拦率/漏拦率的定期统计
+### ⚠️ Recommended for a closed beta, subject to conditions
 
----
+### Conditional Requirements
 
-## 灵魂拷问
+**Must be completed before the beta test begins (1 item):**
 
-> "当AI的准确率从90%提升到95%需要花1000万算力，而提升到96%需要再花2000万时，你会怎么选？"
+1. **Design document for implicit feedback tracking**: This doesn’t need to be implemented immediately, but there must be a written plan. This document should define which user behaviors are considered “accepted” (no further revisions needed). It should also specify the data collection points and storage methods, as well as how to integrate this with existing explicit feedback data. This is the minimum requirement after downgrading the B3 blocker from the v1.0 review phase.
 
-**对应到此产品的翻译**（v2更新）：
+**Must be completed within 4 weeks after the beta test begins (4 items):**
 
-> "当从全Sonnet切换到Sonnet+Haiku混合方案后，章节采纳率从78%降到72%，但成本降低了43%（$12.30→$7.04）。你会把省下来的$5.26全投回去换那6%的采纳率，还是把这笔钱花在优化'那28%被拒绝的章节'的修改体验上？"
+1. **Implementation of implicit feedback tracking**: Implement the code according to the design document. The tracking coverage must be 100%.
+2. **Expansion of content security keyword database**: Align with the review standards of at least 1 target platform (Qingdi/Tomato/Flylu).
+3. **Unified monitoring dashboard**: A real-time dashboard that shows agent usage, costs, quality scores, and acceptance rates (e.g., Grafana or similar tools).
+4. **Formal definition of key metrics**: Determine the core metrics (suggested: chapter acceptance rate). Establish a clear attribution link between these metrics.
 
-**v2新增数据支撑**：
-- 全Sonnet 30章：$12.30（基础）
-- Sonnet+Haiku混合 30章：$7.04（基础），节省 **43%**
-- 预算方案 30章：$3.27（基础），节省 **73%**
-- 但采纳率影响尚无实测数据（需内测后收集）
+**Must be completed within 8 weeks after the beta test begins (3 items):**
 
-**评审人判断**：
-- ✅ 团队有清晰的投资回报边界意识——成本计算器量化了不同方案的成本区间
-- ✅ 架构层面已体现成本分层——ChapterInspector零成本前置检查、Haiku做低成本review
-- ✅ Prompt版本管理提供了"改坏了能回滚"的安全网——降低了优化prompt的风险成本
-- ⚠️ 但需要警惕"Agent堆叠"倾向——当前12个Agent，每个新增Agent都带来新的延迟和成本。建议设定Agent数量上限
+1. **Automated pipeline for data processing**: A complete design document covering labeling, fine-tuning, and verification steps.
+2. **Grayscale release mechanism for models**: Implement a grayscale release mechanism for prompts. Test new prompts first on Chapter 5.
+3. **Example libraries (Playbooks)**: Templates that provide inspiration for creating 5 types of popular online articles.
 
-**v2建议的停火点**（更新）：当章节采纳率（通过显式反馈数据衡量）达到85%时，停止堆Agent/改prompt，转而优化修改体验。**现在有了FeedbackSummary的trend_direction指标，可以在内测中持续监控这个趋势。**
+## Key features of the product (designs that deserve to be preserved and promoted)
 
----
+1. **Three-tier quality control mechanism**: Structural inspection → multi-Agent parallel review → adversarial review. This is a rare “deep defense” mechanism found only in AI products.
+2. **Model allocation based on Agent complexity**: Use Sonnet for creation purposes, and Haiku for inspection purposes. This is a smart approach to cost management. The cost calculator quantifies its value.
+3. **Human-in-the-loop integration into the workflow**: This ensures architectural correctness. Explicit feedback during this process makes the process measurable.
+4. **Bible Markdown export**: This provides natural vendor-lock-in protection.
+5. **🎖️ New in v2: Explicit feedback + failed-output handling mechanisms**: The infrastructure for data-driven decision-making is in place. This is a significant step towards turning this from a “one-time project” into a “sustainable product”.
+6. **🎖️ New in v2: Deterministic quality control mechanism**: ChapterInspector (for structural checks) and ContentSafetyChecker (for security checks) are run before expensive LLM-based reviews. This eliminates any additional costs.
 
-## 最终裁决
+## Appendix: Records of the review process
 
-### ⚠️ 有条件上线 — 建议进入内测
+### Code coverage
+- v1 coverage: agent (all 12 agents), graph (workflow + nodes + edges), llm (client + providers + scheduler), api (routes + websocket), config (settings + model_assignments), models (all data models), storage, prompt templates.
+- New coverage in v2: `models/feedback.py` (135 lines), `utils/content_safety.py` (247 lines), `utils/cost_calculator.py` (393 lines), `config/prompts/prompt_versioning.py` (279 lines). Also, `models/state.py`, `api/routes.py`, and `agents/orchestrator.py` have been modified.
 
-### 附条件清单
+### Test Case Coverage
+- v1: The “tests” directory is empty. Therefore, the test coverage is 0 ❌
+- v2: There are 44 test cases. All of them passed ✅
+  - ChapterInspector edge cases: 15 cases (empty inputs, pure dialogues, extreme lengths, AI-related content, mixed Chinese and English, special characters, repeated content)
+  - ContentSafetyChecker: 15 cases (normal content, blocked content, warning messages, edge cases, correction modes)
+  - Feedback model: 14 cases (positive/negative feedback, reason tags, serialization, aggregated summaries)
 
-**上线内测前必须完成（1项）**：
-
-1. **隐式反馈埋点方案设计文档**：不需要立即实施，但必须有书面方案——定义哪些用户行为算"采纳"（accept决策？后续没有revise？），数据采集点和存储方案，以及如何与现有的显式反馈数据关联。这是v1.0评审的B3阻断项降级为条件后的最低要求。
-
-**内测后4周内必须完成（4项）**：
-
-1. **隐式反馈埋点实施**：根据设计文档完成代码实施，埋点覆盖率需达到100%
-2. **内容安全关键词库扩展**：与至少1个目标平台（起点/番茄/飞卢）的审核标准对齐
-3. **统一监控面板**：Agent使用量/成本/质量分/采纳率的实时看板（Grafana或类似方案）
-4. **北极星指标正式定义**：确定核心指标（建议：章节采纳率），建立归因链路
-
-**内测后8周内必须完成（3项）**：
-
-1. **数据飞轮自动化流水线方案**：标注→微调→验证的完整设计文档
-2. **模型灰度发布机制**：至少实现Prompt级别的灰度（新prompt先在5章上试跑）
-3. **示例库(Playbook)**：覆盖5种热门网文类型的创作灵感模板
-
----
-
-## 产品亮点（值得保留和推广的设计）
-
-1. **三层质量门禁**（结构检查→多Agent并行审查→对抗性审稿）——AI产品中罕见的"纵深防御"
-2. **按Agent难度分配模型**（创作用Sonnet，检查用Haiku）——成本意识的正确姿势，本轮成本计算器量化了其价值
-3. **Human-in-the-loop嵌入工作流**而非事后补救——架构正确性，本轮显式反馈使loop可度量
-4. **Bible Markdown导出**——天然的vendor-lock-in防护
-5. **🎖️ v2新增：显式反馈+Bad Case双机制**——数据飞轮的基础设施已就位，从"一次性项目"向"可持续产品"迈出了第一步
-6. **🎖️ v2新增：确定性质量防线**——ChapterInspector（结构）+ ContentSafetyChecker（安全）在昂贵的LLM审稿之前运行，零额外成本
-
----
-
-## 附录：评审过程记录
-
-### 代码阅读覆盖
-- v1覆盖：agent（12个Agent全部）、graph（workflow + nodes + edges）、llm（client + providers + scheduler）、api（routes + websocket）、config（settings + model_assignments）、models（全部数据模型）、storage、prompt模板
-- v2新增覆盖：`models/feedback.py`（135行）、`utils/content_safety.py`（247行）、`utils/cost_calculator.py`（393行）、`config/prompts/prompt_versioning.py`（279行）、修改后的 `models/state.py`、`api/routes.py`、`agents/orchestrator.py`
-
-### 测试用例覆盖
-- v1：tests/ 为空，测试覆盖为0 ❌
-- v2：44条测试用例，全部通过 ✅
-  - ChapterInspector边缘场景：15条（空输入、纯对话、极端长度、AI味、中英混合、特殊字符、重复内容）
-  - ContentSafetyChecker：15条（正常内容、阻断内容、警告内容、边缘场景、纠正模式）
-  - Feedback模型：14条（正面/负面反馈、原因标签、序列化、聚合摘要）
-
-### 数据来源
-- 源代码和配置文件：完整 ✓
-- 实际运行数据：成本计算器已验证3种模型组合的成本区间 ✓
-- 用户反馈数据：反馈模型+API已就位，待内测收集 ✓
-- 成本报表：从"有数据结构但无运行数据"升级为"有完整计算器+3种方案对比" ✓
+### Data Sources
+- Source code and configuration files: Complete ✓
+- Actual running data: The cost calculator has verified the cost ranges for 3 model combinations ✓
+- User feedback data: The feedback model and API are in place; further testing is needed during beta testing ✓
+- Cost reports: Upgraded from “data structure exists, but no running data” to “complete calculator system with comparison of 3 options” ✓

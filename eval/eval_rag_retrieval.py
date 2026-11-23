@@ -1,24 +1,14 @@
 #!/usr/bin/env python3
-"""novel-agent — 记忆 RAG 检索评估脚本
+"""Evaluate semantic retrieval against a novel's story memory.
 
-用真实项目《回到2015当首富》的长期记忆数据评估语义检索质量：
-1. 索引 memory/long_term.yaml 的 facts（42 条）与 memory/timeline.yaml 的事件（30 条），
-   走项目自身的 NovelVectorStore + Embedder 代码路径（BGE-small-zh 512 维）。
-2. 对每条事实/事件，用本地 Ollama qwen3:8b 改写成一个自然中文检索问题，
-   模拟"写作 Agent 拿着当前剧情去问记忆库"的查询形态。
-3. 检索 top-k，检查来源条目是否命中（recall@k / MRR / 平均排名）。
+Index 42 facts from long_term.yaml and 30 events from timeline.yaml using
+NovelVectorStore and Embedder. Ask local Ollama qwen3:8b to turn each entry
+into a natural English query, then check whether the source appears in the
+top-k results. Report recall, mean reciprocal rank, and mean rank.
 
-运行方式：
-    python eval/eval_rag_retrieval.py \
-        [--bge-model BAAI/bge-small-zh-v1.5] \
-        [--memory-dir eval/fixtures/memory] \
-        [--ollama-model qwen3:8b] [--top-k 5]
-输出：
-    eval/rag_retrieval_results.json
-
-前置条件：
-- 安装 rag 依赖：uv sync --extra rag（chromadb + sentence-transformers）
-- 本地 Ollama 运行 qwen3:8b（用于查询改写；不可用时自动退化为原文查询）
+Run with `uv run python eval/eval_rag_retrieval.py` after installing the
+rag extra. See --help for model, fixture, and output paths. If the local
+Ollama model is unavailable, the script searches with the original entry.
 """
 
 import argparse
@@ -47,26 +37,26 @@ DEFAULT_BGE_MODEL = "BAAI/bge-small-zh-v1.5"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate RAG memory retrieval (recall@k / MRR).")
     parser.add_argument(
-        "--bge-model", default=DEFAULT_BGE_MODEL, help="BGE 模型名或本地路径（默认 BAAI/bge-small-zh-v1.5）"
+        "--bge-model", default=DEFAULT_BGE_MODEL, help="BGE model name or local path (default BAAI/bge-small-zh-v1.5)"
     )
     parser.add_argument(
-        "--memory-dir", default=DEFAULT_MEMORY_DIR, help="记忆数据目录（含 long_term.yaml / timeline.yaml）"
+        "--memory-dir", default=DEFAULT_MEMORY_DIR, help="Memory data directories (including long_term.yaml/timeline.yaml)"
     )
-    parser.add_argument("--store-dir", default=DEFAULT_STORE_DIR, help="ChromaDB 持久化目录")
-    parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL, help="Ollama API 地址")
-    parser.add_argument("--ollama-model", default=DEFAULT_OLLAMA_MODEL, help="Ollama 查询改写模型")
-    parser.add_argument("--top-k", type=int, default=5, help="检索 top-k")
-    parser.add_argument("--output", default=DEFAULT_OUT_PATH, help="结果 JSON 输出路径")
+    parser.add_argument("--store-dir", default=DEFAULT_STORE_DIR, help="ChromaDB persistence directory")
+    parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL, help="Ollama API URL")
+    parser.add_argument("--ollama-model", default=DEFAULT_OLLAMA_MODEL, help="Ollama model for paraphrasing queries")
+    parser.add_argument("--top-k", type=int, default=5, help="Number of results to retrieve")
+    parser.add_argument("--output", default=DEFAULT_OUT_PATH, help="Path for the JSON results")
     return parser.parse_args()
 
 
 def load_docs(memory_dir: str) -> list[tuple[str, str, dict]]:
-    """(id, text, metadata) — 42 facts + 30 timeline events，均为真实生成数据。"""
+    """(id, text, metadata) – 42 facts and 30 timeline events from a generated novel."""
     docs = []
     lt_path = os.path.join(memory_dir, "long_term.yaml")
     tl_path = os.path.join(memory_dir, "timeline.yaml")
     if not os.path.exists(lt_path) or not os.path.exists(tl_path):
-        raise FileNotFoundError(f"memory dir 缺少 long_term.yaml / timeline.yaml: {memory_dir}")
+        raise FileNotFoundError(f"Expected long_term.yaml and timeline.yaml in {memory_dir}")
     lt = yaml.safe_load(open(lt_path, encoding="utf-8"))
     for fid, item in lt.get("facts", {}).items():
         docs.append(
@@ -89,10 +79,10 @@ def load_docs(memory_dir: str) -> list[tuple[str, str, dict]]:
 
 
 def ollama_paraphrase(text: str, ollama_url: str, ollama_model: str, max_chars: int = 120) -> tuple[str, bool]:
-    """本地 qwen3:8b 把事实改写为自然检索问题；失败时退化为原文。"""
+    """Paraphrase a story fact as a retrieval question with local Ollama."""
     prompt = (
-        "把下面这句话改写成一个自然的中文检索问题（用于从小说记忆库中检索这条信息），"
-        f"只输出问题本身，不要解释，不要加引号：\n{text}"
+        "Rewrite the following as a natural English question you could use to retrieve this fact from a novel memory index. "
+        f"Output only the question, without quotation marks or explanation.\n\n{text}"
     )
     body = json.dumps(
         {
@@ -123,14 +113,14 @@ def main() -> None:
     events = [d for d in docs if d[2]["type"] == "event"]
     print(f"docs: {len(docs)} (facts={len(facts)}, events={len(events)})")
 
-    # 用项目自身的索引接口入库
+    # Index both types of entries through the project's storage API.
     store.index_facts([(i, t, m) for i, t, m in facts])
     store.index_timeline_events([(i, t, m) for i, t, m in events])
     print(f"indexed: {store.count_all()}")
 
     results = {
         "model": args.bge_model,
-        "query_paraphrase": f"Ollama {args.ollama_model} 本地改写（失败时退化为原文）",
+        "query_paraphrase": f"Ollama {args.ollama_model} local paraphrase, falling back to the original entry",
         "n_facts": len(facts),
         "n_events": len(events),
         "top_k": args.top_k,

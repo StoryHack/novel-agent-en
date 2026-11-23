@@ -71,9 +71,9 @@ async def test_workflow_pauses_at_each_phase_and_resumes():
     assert _result_phase(r1) == "bible_construction"
 
     # Resume with inspiration → characters_work → pause at characters confirm
-    r2 = await graph.ainvoke(Command(resume={"inspiration": "加一个隐藏主线"}), config=config)
+    r2 = await graph.ainvoke(Command(resume={"inspiration": "Add a hidden main line"}), config=config)
     assert _result_phase(r2) == "character_creation"
-    assert orch.inspirations == ["加一个隐藏主线"], "inspiration must reach state"
+    assert orch.inspirations == ["Add a hidden main line"], "inspiration must reach state"
 
     # Resume again → outline_work → pause at outline confirm
     r3 = await graph.ainvoke(Command(resume={"inspiration": None}), config=config)

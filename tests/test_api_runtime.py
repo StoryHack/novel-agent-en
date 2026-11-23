@@ -45,11 +45,11 @@ class FakeScheduler(ModelScheduler):
     response, otherwise a default-constructed instance.
     """
 
-    def __init__(self, *, content: str = "书名：测试书名\n简介：这是一个测试简介。",
+    def __init__(self, *, content: str = "Title: The Talking Cat\nSynopsis: A cat learns to talk.",
                  titles: list[str] | None = None, fail: bool = False):
         super().__init__(assignments=[])
         self.content = content
-        self.titles = titles or ["书名一", "书名二", "书名三"]
+        self.titles = titles or ["Title One", "Title Two", "Title Three"]
         self.fail = fail
         self.calls: list[str] = []
 
@@ -88,10 +88,10 @@ def client():
 
 PROJECT_PAYLOAD = {
     "config": {
-        "title": "测试仙侠之逆天改命",
-        "inspiration": "山村少年偶得残破仙书，逆天改命。",
-        "genre": ["玄幻", "修仙"],
-        "target_readers": "18-35岁男性读者",
+        "title": "To test his life against his will",
+        "inspiration": "A young mountain boy has to break a fairy book and change his life.",
+        "genre": ["Fantasy", "Cultivation Fantasy"],
+        "target_readers": "Male readers ages 18–35",
         "target_word_count": 80000,
     }
 }
@@ -117,10 +117,10 @@ async def test_project_crud_roundtrip(client):
     assert r.json()["config"]["title"] == PROJECT_PAYLOAD["config"]["title"]
 
     # update title
-    r = await client.put(f"/api/projects/{project_id}/title", json={"title": "改名后的书名"})
+    r = await client.put(f"/api/projects/{project_id}/title", json={"title": "Book name after name change"})
     assert r.status_code == 200
     r = await client.get(f"/api/projects/{project_id}")
-    assert r.json()["meta"]["title"] == "改名后的书名"
+    assert r.json()["meta"]["title"] == "Book name after name change"
 
     # delete
     r = await client.delete(f"/api/projects/{project_id}")
@@ -133,12 +133,22 @@ async def test_suggest_titles_uses_fake_scheduler(client, _isolate_scheduler):
     fake: FakeScheduler = _isolate_scheduler
     r = await client.post(
         "/api/projects/suggest-titles",
-        json={"inspiration": "一个会说话的猫", "genre": ["都市"]},
+        json={"inspiration": "A talking cat", "genre": ["Urban Fiction"]},
     )
     assert r.status_code == 200, r.text
     titles = r.json()["titles"]
     assert titles == fake.titles
     assert fake.calls, "scheduler should have been called by suggest-titles"
+
+
+async def test_generate_synopsis_parses_english_labels(client):
+    r = await client.post(
+        "/api/projects/test-project/generate-synopsis",
+        json={"genre_name": "Fantasy", "inspiration": "A talking cat"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["final_title"] == "The Talking Cat"
+    assert r.json()["final_synopsis"] == "A cat learns to talk."
 
 
 async def test_start_workflow_survives_fake_llm_failure(client, _isolate_scheduler):

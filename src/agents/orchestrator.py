@@ -44,52 +44,52 @@ def _build_topic_context(state: "MainState") -> tuple[str, list[str]]:
     # ---- Mini-arc outline (pacing, conflicts, pleasure points) ----
     if state.mini_arc_outline:
         for genre_name, outline in state.mini_arc_outline.items():
-            parts.append(f"【小事件闭环大纲 — {genre_name}】")
-            parts.append(f"闭环总目标：{outline.arc_goal}")
-            parts.append(f"总字数：{outline.total_words}")
-            parts.append("10章节奏骨架：")
+            parts.append(f"Opening arc outline: {genre_name}")
+            parts.append(f"Arc goal: {outline.arc_goal}")
+            parts.append(f"Total words: {outline.total_words}")
+            parts.append("Ten-chapter pacing outline:")
             for ch in (outline.chapters or [])[:5]:
                 parts.append(
-                    f"  第{ch.chapter_number}章 | 目标：{ch.goal} | 冲突：{ch.conflict} | 爽点：{ch.pleasure_point}"
+                    f"  Chapter {ch.chapter_number} | Goal: {ch.goal} | Conflict: {ch.conflict} | Payoff: {ch.pleasure_point}"
                 )
             if outline.chapters and len(outline.chapters) >= 10:
                 last = outline.chapters[-1]
                 parts.append(
-                    f"  ... → 第{last.chapter_number}章(终章) | 目标：{last.goal} | 爽点：{last.pleasure_point}"
+                    f"  ... Chapter {last.chapter_number} (finale) | Goal: {last.goal} | Payoff: {last.pleasure_point}"
                 )
-            parts.append(f"下一事件钩子：{outline.next_arc_hook}")
+            parts.append(f"Next arc hook: {outline.next_arc_hook}")
             parts.append("")
 
     # ---- Selected topic details (title, synopsis, golden finger) ----
     if research and research.title_synopsis:
         ts = research.title_synopsis[0]
-        parts.append(f"【选定题材】{ts.genre_name}")
-        parts.append(f"书名：《{ts.final_title}》")
-        parts.append(f"简介：{ts.final_synopsis}")
+        parts.append(f"Selected genre: {ts.genre_name}")
+        parts.append(f"Title: {ts.final_title}")
+        parts.append(f"Synopsis: {ts.final_synopsis}")
         extra_genres.append(ts.genre_name)
 
         # Matching candidate topic for detailed design specs
         if research.candidates:
             for c in research.candidates.topics:
                 if c.genre_name == ts.genre_name:
-                    parts.append(f"一句话设定：{c.one_line_setting}")
-                    parts.append(f"核心金手指：{c.golden_finger}")
-                    parts.append(f"第一章冲突：{c.chapter1_conflict}")
-                    parts.append(f"小事件闭环方向：{c.first_event_direction}")
-                    parts.append(f"第一波爽点：{c.first_pleasure_wave}")
-                    parts.append(f"番茄适配度：{c.tomato_fit} | 视频表现力：{c.video_potential}")
+                    parts.append(f"One-sentence premise: {c.one_line_setting}")
+                    parts.append(f"Signature advantage: {c.golden_finger}")
+                    parts.append(f"First-chapter conflict: {c.chapter1_conflict}")
+                    parts.append(f"Opening arc direction: {c.first_event_direction}")
+                    parts.append(f"First payoff: {c.first_pleasure_wave}")
+                    parts.append(f"Fanqie fit: {c.tomato_fit} | Video potential: {c.video_potential}")
                     if c.risk:
-                        parts.append(f"风险点：{c.risk}")
+                        parts.append(f"Risk: {c.risk}")
                     break
         parts.append("")
 
     # ---- Benchmark insights ----
     if research and research.benchmarks and research.benchmarks.structural_summary:
-        parts.append(f"【对标书结构参考】{research.benchmarks.structural_summary}")
+        parts.append(f"Benchmark structures: {research.benchmarks.structural_summary}")
 
     # ---- Cross-platform context ----
     if research and research.cross_platform and research.cross_platform.selected_directions:
-        parts.append(f"【市场方向】{', '.join(research.cross_platform.selected_directions)}")
+        parts.append(f"Market direction: {', '.join(research.cross_platform.selected_directions)}")
 
     return "\n".join(parts).strip(), extra_genres
 
@@ -114,7 +114,7 @@ def _extract_genres_from_scans(
             # Normalize common genre patterns
             if not g:
                 continue
-            # Split combined genres like "都市/系统"
+            # Split combined genre tags such as "urban fiction/system fiction".
             for sub in g.replace("／", "/").split("/"):
                 sub = sub.strip()
                 if sub and sub not in seen:
@@ -123,26 +123,27 @@ def _extract_genres_from_scans(
 
     # If no genre tags found, try to infer from book titles
     if not genres:
-        GENRE_KEYWORDS = {
-            "战神": "都市战神",
-            "修仙": "玄幻修仙",
-            "系统": "系统流",
-            "重生": "重生逆袭",
-            "穿越": "穿越架空",
-            "赘婿": "都市赘婿",
-            "神医": "都市神医",
-            "盗墓": "悬疑探险",
-            "灵异": "灵异恐怖",
-            "游戏": "游戏异界",
-            "末日": "末日生存",
-            "武侠": "武侠江湖",
+        # The ranking pages still contain Chinese titles.
+        genre_keywords = {
+            "战神": "Urban War Hero",
+            "修仙": "Cultivation Fantasy",
+            "系统": "System Fiction",
+            "重生": "Rebirth and Redemption",
+            "穿越": "Portal Fantasy",
+            "赘婿": "Urban Son-in-Law Drama",
+            "神医": "Urban Medical Drama",
+            "盗墓": "Tomb-Raiding Adventure",
+            "灵异": "Supernatural Horror",
+            "游戏": "Game World Fantasy",
+            "末日": "Apocalyptic Survival",
+            "武侠": "Martial Arts Fiction",
         }
         for report in (feilu, fanqie):
             if report is None or report.scan_failed:
                 continue
             for entry in report.entries or []:
                 title = (entry.title or "").strip()
-                for kw, genre in GENRE_KEYWORDS.items():
+                for kw, genre in genre_keywords.items():
                     if kw in title and genre not in seen:
                         seen.add(genre)
                         genres.append(genre)
@@ -198,10 +199,10 @@ class OrchestratorAgent:
         feilu_content: str | None = None,
         fanqie_content: str | None = None,
     ) -> MainState:
-        """Scan 飞卢 and 番茄 real rankings for trending topics.
+        """Scan Feilu and Fanqie real rankings for guiding topics.
 
         Pass page content from browser automation (Playwright MCP).
-        If content is None, the scan fails gracefully with "本次扫榜失败".
+        If no content is supplied, the scan is marked as failed.
         """
         logger.info("Phase 0a: Scanning platforms...")
         state.current_phase = "platform_scan"
@@ -217,7 +218,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="topic_scout",
                 phase="scan_feilu",
-                summary=f"飞卢扫榜: {'失败' if feilu.scan_failed else f'{len(feilu.entries)}本书'}",
+                summary=f"Feilu rankings: {'Failed' if feilu.scan_failed else f'{len(feilu.entries)} books'}",
             )
         )
 
@@ -227,7 +228,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="topic_scout",
                 phase="scan_fanqie",
-                summary=f"番茄扫榜: {'失败' if fanqie.scan_failed else f'{len(fanqie.entries)}本书'}",
+                summary=f"Fanqie rankings: {'Failed' if fanqie.scan_failed else f'{len(fanqie.entries)} books'}",
             )
         )
 
@@ -262,7 +263,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="topic_scout",
                 phase="cross_platform",
-                summary=f"交叉分析: {len(cross.entries)}题材, 保留{len(cross.selected_directions)}方向",
+                summary=f"Cross-platform analysis: {len(cross.entries)} genres, {len(cross.selected_directions)} directions selected",
             )
         )
 
@@ -276,8 +277,8 @@ class OrchestratorAgent:
         if not effective_directions:
             logger.warning("No topic directions available from any source — generating generic topics")
             # Create minimal direction from user inspiration or generic prompt
-            generic = state.current_inspiration or "都市生活"
-            effective_directions = [generic, "玄幻修仙", "系统流", "重生逆袭"]
+            generic = state.current_inspiration or "Urban Fiction"
+            effective_directions = [generic, "Cultivation Fantasy", "System Fiction", "Rebirth and Redemption"]
 
         # Step 2: Benchmark book skeleton analysis
         benchmarks = await self.topic_scout.analyze_benchmarks(
@@ -290,7 +291,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="topic_scout",
                 phase="benchmarks",
-                summary=f"对标拆解: {len(benchmarks.entries)}本书",
+                summary=f"Benchmark analysis: {len(benchmarks.entries)} books",
             )
         )
 
@@ -304,7 +305,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="topic_scout",
                 phase="generate_topics",
-                summary=f"生成{len(candidates.topics)}个候选题材",
+                summary=f"Generated {len(candidates.topics)} concepts",
             )
         )
 
@@ -315,11 +316,11 @@ class OrchestratorAgent:
                 fallback_topics.append(
                     CandidateTopic(
                         genre_name=direction,
-                        one_line_setting=f"一部{direction}题材的小说",
-                        golden_finger="待定",
-                        chapter1_conflict="待定",
-                        first_event_direction="待定",
-                        first_pleasure_wave="待定",
+                        one_line_setting=f"A novel in the {direction} genre",
+                        golden_finger="To be decided",
+                        chapter1_conflict="To be decided",
+                        first_event_direction="To be decided",
+                        first_pleasure_wave="To be decided",
                     )
                 )
             if fallback_topics:
@@ -331,8 +332,8 @@ class OrchestratorAgent:
             else:
                 # Ultimate fallback: generic topics
                 generic = [
-                    CandidateTopic(genre_name=g, one_line_setting=f"一部{g}题材的小说")
-                    for g in ["都市生活", "玄幻修仙", "系统流", "重生逆袭"]
+                    CandidateTopic(genre_name=g, one_line_setting=f"A novel in the {g} genre")
+                    for g in ["Urban Fiction", "Cultivation Fantasy", "System Fiction", "Rebirth and Redemption"]
                 ]
                 candidates = CandidateTopicsOutput(topics=generic)
                 research.candidates = candidates
@@ -345,7 +346,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="topic_scout",
                 phase="score_topics",
-                summary=f"评分完成: 前4名={scores.top_4}",
+                summary=f"Scoring complete. Top four: {scores.top_4}",
             )
         )
 
@@ -373,7 +374,7 @@ class OrchestratorAgent:
                 AgentLogEntry(
                     agent="topic_scout",
                     phase="generate_titles",
-                    summary=f"书名: {genre_name} → {title_report.final_title}",
+                    summary=f"Title: {genre_name} → {title_report.final_title}",
                 )
             )
 
@@ -407,7 +408,7 @@ class OrchestratorAgent:
                     TitleSynopsisReport(
                         genre_name=t.genre_name,
                         final_title=t.genre_name,
-                        final_synopsis=t.one_line_setting or f"{t.genre_name}题材小说",
+                        final_synopsis=t.one_line_setting or f"A novel in the {t.genre_name} genre",
                     )
                 )
 
@@ -418,7 +419,7 @@ class OrchestratorAgent:
                     TitleSynopsisReport(
                         genre_name=d,
                         final_title=d,
-                        final_synopsis=f"一部{d}题材的精彩小说",
+                        final_synopsis=f"A novel in the {d} genre",
                     )
                 )
 
@@ -426,7 +427,7 @@ class OrchestratorAgent:
             if not fallback_reports and state.current_inspiration:
                 fallback_reports.append(
                     TitleSynopsisReport(
-                        genre_name="自定题材",
+                        genre_name="Original Concept",
                         final_title=state.current_inspiration[:50],
                         final_synopsis=state.current_inspiration,
                     )
@@ -437,9 +438,9 @@ class OrchestratorAgent:
                 logger.warning("No fallback data available — generating generic placeholder")
                 fallback_reports = [
                     TitleSynopsisReport(
-                        genre_name="都市生活",
-                        final_title="未命名小说",
-                        final_synopsis="一部精彩的网络小说",
+                        genre_name="Urban Fiction",
+                        final_title="Unnamed Novel",
+                        final_synopsis="A web novel",
                     )
                 ]
 
@@ -474,7 +475,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="topic_scout",
                 phase="plan_mini_arc",
-                summary=f"小事件大纲: {genre} → {chapter_count}章, 目标{outline.total_words}字",
+                summary=f"Opening Arc Outline: {genre} — {chapter_count} chapters, target {outline.total_words} words",
             )
         )
         if chapter_count == 0:
@@ -490,7 +491,7 @@ class OrchestratorAgent:
                 AgentLogEntry(
                     agent="orchestrator",
                     phase="mini_arc_outline",
-                    summary="⚠️ 大纲章节为空 — 所有生成层均失败，请检查LLM配置",
+                    summary="The outline is empty. All generation attempts failed.",
                 )
             )
 
@@ -538,7 +539,7 @@ class OrchestratorAgent:
             enriched = (
                 f"{config.inspiration}\n\n"
                 f"{'=' * 40}\n"
-                f"以下为上游选题研究成果，请严格以此为基准构建世界观：\n"
+                f"Base the worldbuilding on the following topic research:\n"
                 f"{'=' * 40}\n"
                 f"{topic_context}"
             )
@@ -799,7 +800,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="writer",
                 phase="generate_chapter",
-                summary=f"Chapter {draft.chapter_number}: {draft.word_count} chars, "
+                summary=f"Chapter {draft.chapter_number}: {draft.word_count} words, "
                 f"{len(draft.new_facts)} facts | "
                 f"Inspection: {'PASS' if inspection.passed else 'FAIL'} "
                 f"({len(inspection.issues)} issues, {len(inspection.warnings)} warnings) | "
@@ -926,8 +927,8 @@ class OrchestratorAgent:
                             Issue(
                                 severity="critical",
                                 category="adversarial_review",
-                                description="对抗性审稿要求强制修订",
-                                suggestion="请根据对抗性审稿意见进行修订",
+                                description="The independent review requires revision",
+                                suggestion="Address the independent review findings",
                             )
                         )
 
@@ -993,7 +994,7 @@ class OrchestratorAgent:
             AgentLogEntry(
                 agent="refiner",
                 phase="polish_chapter",
-                summary=f"Polished: {polished.word_count} chars, notes: {polished.revision_notes[:100]}",
+                summary=f"Polished: {polished.word_count} words, notes: {polished.revision_notes[:100]}",
             )
         )
 

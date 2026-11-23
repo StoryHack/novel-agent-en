@@ -29,7 +29,7 @@ class TestFeedbackEntry:
         entry = FeedbackEntry(
             chapter_number=1,
             sentiment=FeedbackSentiment.THUMBS_UP,
-            notes="这章写得很好！",
+            notes="It's a good chapter!",
         )
         assert entry.is_positive
         assert entry.chapter_number == 1
@@ -43,7 +43,7 @@ class TestFeedbackEntry:
                 FeedbackReasonTag.CHARACTER_BROKEN,
                 FeedbackReasonTag.AI_FLAVOR_HEAVY,
             ],
-            notes="主角性格前后不一致",
+            notes="The character of the main character is not consistent",
             decision="rewrite",
             revision_count=2,
             review_score=5.5,
@@ -60,7 +60,7 @@ class TestFeedbackEntry:
             sentiment=FeedbackSentiment.THUMBS_DOWN,
             reason_tags=[FeedbackReasonTag.PLOT_BORING],
         )
-        assert "情节无聊" in entry.reason_labels
+        assert "Boring plot" in entry.reason_labels
 
     def test_multiple_reason_labels(self):
         entry = FeedbackEntry(
@@ -73,9 +73,9 @@ class TestFeedbackEntry:
             ],
         )
         labels = entry.reason_labels
-        assert "情节无聊" in labels
-        assert "节奏问题" in labels
-        assert "AI味太重" in labels
+        assert "Boring plot" in labels
+        assert "Pacing issue" in labels
+        assert "Overly generic AI prose" in labels
 
     def test_timestamp_auto_generated(self):
         entry = FeedbackEntry(chapter_number=1)

@@ -46,15 +46,15 @@ def scheduler():
 @pytest.fixture(scope="module")
 def config():
     return ProjectConfig(
-        title="逆命九霄",
+        title="I'm not going anywhere",
         inspiration=(
-            "一个天生废脉的少年秦默，被家族流放至偏远矿区。"
-            "在一次矿难中，他意外发现了一块远古传承晶石，觉醒沉睡万年的血脉。"
-            "从此，他踏上了一条逆天改命的修真之路。"
+            "Qin Mo, a young man born with no pulse, was exiled by his family to remote mining areas."
+            "In a mine disaster, he accidentally discovered an ancient crystal stone that awakened and fell asleep for thousands of years."
+            "Since then, he has embarked on a path of rehabilitation that is counterproductive."
         ),
-        genre=["玄幻", "修仙", "爽文"],
-        target_readers="喜欢热血升级流和逆袭爽文的男性读者，18-35岁",
-        tone="热血",
+        genre=["Fantasy", "Cultivation Fantasy", "It's a piece of shit"],
+        target_readers="Male readers who like hot blood and repulsive texts, 18-35 years old",
+        tone="Hot blood",
         target_word_count=90000,
     )
 
@@ -542,11 +542,11 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
         s = ModelScheduler()
         cfg = ProjectConfig(
-            title="逆命九霄",
-            inspiration="一个天生废脉的少年意外觉醒远古血脉，踏上逆天改命的修真之路。",
-            genre=["玄幻", "修仙", "爽文"],
-            target_readers="喜欢热血升级流的男性读者",
-            tone="热血",
+            title="I'm not going anywhere",
+            inspiration="A young man born with a broken vein unexpectedly awakens the ancient veins and embarks on the path to a true cure against the fate of man.",
+            genre=["Fantasy", "Cultivation Fantasy", "It's a piece of shit"],
+            target_readers="A male reader who likes hot blood to escalate",
+            tone="Hot blood",
             target_word_count=90000,
         )
         await test_full_pipeline(s, cfg)

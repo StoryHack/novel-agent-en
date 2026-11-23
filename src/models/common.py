@@ -35,9 +35,9 @@ class WorkflowPhase(StrEnum):
 
     IDLE = "idle"
     # Upstream: commercial research pipeline
-    PLATFORM_SCAN = "platform_scan"  # Steps 1A/1B: 飞卢+番茄扫榜
-    TOPIC_SELECTION = "topic_selection"  # Steps 1C-4A: 交叉分析→对标→选题→书名
-    MINI_ARC_OUTLINE = "mini_arc_outline"  # Step 5: 10章小事件闭环大纲
+    PLATFORM_SCAN = "platform_scan"  # Steps 1A/1B: Scan Feilu and Fanqie rankings
+    TOPIC_SELECTION = "topic_selection"  # Steps 1C–4A: Compare rankings, analyze benchmarks, select concepts, and draft titles
+    MINI_ARC_OUTLINE = "mini_arc_outline"  # Step 5: Outline a self-contained ten-chapter arc
     # Core pipeline
     PROJECT_INIT = "project_init"
     BIBLE_CONSTRUCTION = "bible_construction"

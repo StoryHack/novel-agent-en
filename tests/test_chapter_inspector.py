@@ -35,7 +35,7 @@ def _make_draft(content: str, chapter_number: int = 1, word_count: int = 0) -> C
     wc = word_count if word_count > 0 else len(content)
     return ChapterDraft(
         chapter_number=chapter_number,
-        title=f"第{chapter_number}章",
+        title=f"Chapter {chapter_number}",
         content=content,
         word_count=wc,
     )
@@ -61,7 +61,7 @@ class TestEmptyAndMinimalInput:
 
     def test_single_sentence(self, inspector):
         """Single short sentence should not crash."""
-        draft = _make_draft("他走进了房间。")
+        draft = _make_draft("He walked into the room.")
         result = inspector.inspect(draft)
         assert isinstance(result, InspectionResult)
         assert result.word_count < 50
@@ -107,7 +107,7 @@ class TestExtremeLengthChapters:
 
     def test_very_short_chapter(self, inspector):
         """Chapter under 500 characters should be flagged as too short."""
-        text = "他走进去，看到了她。就这些。"
+        text = "He walked in and saw her. That was all."
         draft = _make_draft(text)
         result = inspector.inspect(draft)
         assert result.word_count < 100
@@ -193,7 +193,7 @@ class TestSpecialCharacters:
 
     def test_text_with_emojis(self, inspector):
         """Text containing emoji should not break the inspector."""
-        text = "他笑了\U0001f60a，她也笑了\U0001f602。这就是人生\U0001f31f。战斗吧少年⚔️！" * 50
+        text = "He smiled \U0001f60a. She laughed \U0001f602. Such is life \U0001f31f. Keep fighting ⚔️！" * 50
         draft = _make_draft(text)
         result = inspector.inspect(draft)
         assert isinstance(result, InspectionResult)
@@ -201,11 +201,11 @@ class TestSpecialCharacters:
     def test_text_with_html_like_tags(self, inspector):
         """Text with HTML-like tags should not match AI markers incorrectly."""
         text = (
-            "<system>正在加载世界设定...</system>\n"
-            "李明看着眼前的光幕，上面显示着：\n"
-            "<status>任务完成</status>\n"
-            "<reward>获得经验值1000</reward>\n"
-            "他微微一笑，这系统文的主角待遇，终究是轮到自己了。"
+            "<system>Loading world data...</system>\n"
+            "Li Ming looked at the words on the screen:\n"
+            "<status>Task complete</status>\n"
+            "<reward>Earned 1,000 experience points</reward>\n"
+            "He smiled. Finally, it was his turn to be the hero."
         ) * 10
         draft = _make_draft(text)
         result = inspector.inspect(draft)
@@ -217,7 +217,7 @@ class TestDuplicateContent:
 
     def test_duplicate_paragraphs(self, inspector):
         """Chapter with repeated identical paragraphs."""
-        para = "他走进房间，看到了那把椅子。椅子是红色的，上面有金色的花纹。"
+        para = "He walked into the room and saw the chair, red with a gold pattern."
         text = "\n\n".join([para] * 30)
         draft = _make_draft(text)
         result = inspector.inspect(draft)
@@ -227,13 +227,13 @@ class TestDuplicateContent:
     def test_short_paragraphs(self, inspector):
         """Very short paragraphs (one sentence each)."""
         paragraphs = [
-            "他来了。",
-            "她走了。",
-            "天下雨了。",
-            "他撑开了伞。",
-            "她回头看了一眼。",
-            "他没有追上去。",
-            "雨越下越大。",
+            "He came.",
+            "She left.",
+            "It rained.",
+            "He opened his umbrella.",
+            "She glanced back.",
+            "He stayed where he was.",
+            "The rain grew heavier.",
         ]
         text = "\n\n".join(paragraphs * 10)
         draft = _make_draft(text)

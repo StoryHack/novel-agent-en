@@ -13,7 +13,7 @@ The reviewer's job is to be a SKEPTIC — find problems, not be nice.
 
 import logging
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from ..models.bible import NovelBible
 from ..models.chapter import ChapterDraft
@@ -48,23 +48,28 @@ class AdversarialReviewOutput(BaseModel):
     # ── Adversarial-specific fields ──
     plot_holes: list[str] = Field(
         default_factory=list,
-        description="逻辑漏洞或情节矛盾（可能被作者忽略的）",
+        description="Plot holes and contradictions the author may have missed",
+        validation_alias=AliasChoices("plot_holes", "逻辑漏洞或情节矛盾（可能被作者忽略的）"),
     )
     character_inconsistencies: list[str] = Field(
         default_factory=list,
-        description="角色行为与设定不符的地方",
+        description="Behavior that conflicts with established characterization",
+        validation_alias=AliasChoices("character_inconsistencies", "角色行为与设定不符的地方"),
     )
     missed_opportunities: list[str] = Field(
         default_factory=list,
-        description="本章应该做但没有做的事（爽点、伏笔、信息增量）",
+        description="Missed opportunities for payoffs, foreshadowing, or new information",
+        validation_alias=AliasChoices("missed_opportunities", "本章应该做但没有做的事（爽点、伏笔、信息增量）"),
     )
     reader_drop_points: list[str] = Field(
         default_factory=list,
-        description="读者可能弃书的段落及原因",
+        description="Passages where readers may stop and the reasons why",
+        validation_alias=AliasChoices("reader_drop_points", "读者可能弃书的段落及原因"),
     )
     revision_required: bool = Field(
         default=False,
-        description="是否需要强制修订",
+        description="Whether revision is required",
+        validation_alias=AliasChoices("revision_required", "是否需要强制修订"),
     )
 
 
@@ -187,7 +192,7 @@ class ReviewerAgent(BaseAgent):
                     severity="critical",
                     category="plot_hole",
                     description=hole,
-                    suggestion="需要修复此逻辑漏洞：确保因果链完整",
+                    suggestion="Need to repair this logical loophole: ensure the integrity of the causal chain",
                 )
             )
 
@@ -196,8 +201,8 @@ class ReviewerAgent(BaseAgent):
                 Issue(
                     severity="major",
                     category="reader_engagement",
-                    description=f"读者弃书风险：{drop}",
-                    suggestion="增强此处的爽点、悬念或信息增量",
+                    description=f"Risk of losing readers: {drop}",
+                    suggestion="Increase the payoff, suspense or information increment here",
                 )
             )
 
@@ -207,7 +212,7 @@ class ReviewerAgent(BaseAgent):
                     severity="major",
                     category="missed_opportunity",
                     description=missed,
-                    suggestion="考虑在本章中加入此元素",
+                    suggestion="Consider adding this element to this chapter",
                 )
             )
 
@@ -217,7 +222,7 @@ class ReviewerAgent(BaseAgent):
                     severity="major",
                     category="character",
                     description=inc,
-                    suggestion="检查角色设定，确保行为有合理的动机铺垫",
+                    suggestion="Check role-setting to ensure that there's a reasonable motive to act",
                 )
             )
 
@@ -246,33 +251,28 @@ class ReviewerAgent(BaseAgent):
     ) -> str:
         """Build the adversarial system prompt.
 
-        The key phrase is "挑剔的审稿人" (picky reviewer) — we want the LLM
+        The key case is "picky reviewer" -- we want the LLM
         to actively look for problems, not to be balanced or diplomatic.
         """
         style = bible.style_contract
 
-        prompt = f"""你是一位极其挑剔的小说审稿人。
+        prompt = f"""You are a rigorous fiction reviewer. Find contradictions, plot holes, pacing problems, inconsistent characterization, formulaic phrasing, and places where readers might stop.
 
-你的专长：你有一双能发现任何问题的眼睛。你的职责不是赞美，而是找出每一处
-瑕疵、矛盾、逻辑漏洞、节奏问题和读者可能弃书的地方。你对AI生成的套路表达
-有天然的敏感，你对角色行为的一致性有强迫症级别的执着。
+1. Scrutinize each scene for problems.
+2. Ask where readers might lose interest.
+3. Check whether the setup will remain coherent later in the story.
+4. Look for passages that could be cut without affecting the story.
+5. State each issue directly.
 
-你的审稿哲学：
-1. 默认假设有问题，直到确认没有 — 而不是默认没问题
-2. 从读者角度思考：读到这段会不会想弃书？
-3. 从作者角度思考：这个设定后面会不会崩？
-4. 从编辑角度思考：这段能不能删掉而不影响故事？
-5. 你不需要「平衡」评价 — 有问题就直接指出
-
-文风基准：
-- 语调：{style.tone}
-- 句式风格：{style.sentence_style}
-- 禁用表达：{", ".join(style.forbidden_phrases) if style.forbidden_phrases else "无"}
-- 推荐技法：{", ".join(style.preferred_techniques) if style.preferred_techniques else "无"}
+Style reference:
+- Tone: {style.tone}
+- Sentence style: {style.sentence_style}
+- Expressions to avoid: {", ".join(style.forbidden_phrases) if style.forbidden_phrases else "None"}
+- Recommended techniques: {", ".join(style.preferred_techniques) if style.preferred_techniques else "None"}
 """
 
         if config:
-            prompt += f"\n目标读者：{config.target_readers}"
+            prompt += f"\nTarget readers: {config.target_readers}"
 
         return prompt
 
@@ -294,55 +294,55 @@ class ReviewerAgent(BaseAgent):
         parts = []
 
         # ── Chapter metadata ──
-        parts.append(f"## 审稿任务：第{draft.chapter_number}章《{draft.title}》")
+        parts.append(f"## Review Chapter {draft.chapter_number}: {draft.title}")
         parts.append("")
-        parts.append("请以最挑剔的标准审阅本章。你的目标是找出所有问题，包括那些作者自己可能没意识到的盲点。")
+        parts.append("Review this chapter closely and identify issues the author might have overlooked.")
 
         # ── What the chapter was SUPPOSED to do ──
         parts.append("")
-        parts.append("## 本章规划（对照标准）")
-        parts.append(f"- 目标：{chapter_plan.goal}")
-        parts.append(f"- 核心冲突：{chapter_plan.conflict}")
-        parts.append(f"- 信息增量：{chapter_plan.information_increment}")
-        parts.append(f"- 章末钩子设计：{chapter_plan.ending_hook}")
-        parts.append(f"- 规划场景数：{len(chapter_plan.scenes)}")
-        parts.append(f"- 目标字数：{chapter_plan.word_count_target} | 实际字数：{draft.word_count}")
-        parts.append(f"- 出场角色：{', '.join(chapter_plan.characters_involved)}")
+        parts.append("## Chapter Plan")
+        parts.append(f"- Goal: {chapter_plan.goal}")
+        parts.append(f"- Central conflict: {chapter_plan.conflict}")
+        parts.append(f"- New information: {chapter_plan.information_increment}")
+        parts.append(f"- Planned ending hook: {chapter_plan.ending_hook}")
+        parts.append(f"- Planned scenes: {len(chapter_plan.scenes)}")
+        parts.append(f"- Target words: {chapter_plan.word_count_target} | Actual words: {draft.word_count}")
+        parts.append(f"- Characters: {', '.join(chapter_plan.characters_involved)}")
 
         # ── Source materials (independent verification) ──
         parts.append("")
-        parts.append("## 世界观规则（用于验证一致性）")
+        parts.append("## World and Narrative Rules")
         if bible.rules:
-            parts.append(f"- POV约束：{bible.rules.pov_constraint}")
-            parts.append(f"- 时态：{bible.rules.tense}")
-            parts.append(f"- 场景分隔符：{bible.rules.scene_break_style}")
-        parts.append(f"- 世界类型：{bible.world.world_type}")
+            parts.append(f"- Point of view: {bible.rules.pov_constraint}")
+            parts.append(f"- Tense: {bible.rules.tense}")
+            parts.append(f"- Scene separator: {bible.rules.scene_break_style}")
+        parts.append(f"- World type: {bible.world.world_type}")
         if bible.world.magic_system:
-            parts.append(f"- 力量体系：{bible.world.magic_system}")
+            parts.append(f"- Power system: {bible.world.magic_system}")
 
         # ── Character references ──
         parts.append("")
-        parts.append("## 角色设定（用于验证角色行为一致性）")
+        parts.append("## Character Profiles")
         involved_ids = set()
         for cid, char in characters.characters.items():
             if char.name in chapter_plan.characters_involved:
                 involved_ids.add(cid)
                 parts.append(
                     f"- [{cid}] {char.name} ({char.role}): "
-                    f"性格={char.personality[:80]} | 动机={char.motivation[:80]} | 缺陷={char.flaw[:60]}"
+                    f"Personality: {char.personality[:80]} | Motivation: {char.motivation[:80]} | Flaw: {char.flaw[:60]}"
                 )
         if not involved_ids:
             # Include all characters if none matched
             for cid, char in list(characters.characters.items())[:5]:
                 parts.append(
-                    f"- [{cid}] {char.name} ({char.role}): 性格={char.personality[:80]} | 动机={char.motivation[:80]}"
+                    f"- [{cid}] {char.name} ({char.role}): Personality: {char.personality[:80]} | Motivation: {char.motivation[:80]}"
                 )
 
         # ── Outline context ──
         if outline:
             parts.append("")
-            parts.append("## 故事大纲（用于验证情节一致性）")
-            parts.append(f"- 主线：{outline.logline}")
+            parts.append("## Story Outline")
+            parts.append(f"- Main plot: {outline.logline}")
             current_volume = None
             for vol in outline.volumes or []:
                 if hasattr(vol, "start_chapter") and hasattr(vol, "end_chapter"):
@@ -350,22 +350,22 @@ class ReviewerAgent(BaseAgent):
                         current_volume = vol
                         break
             if current_volume:
-                parts.append(f"- 当前卷：{current_volume.title}")
-                parts.append(f"- 卷范围：第{current_volume.start_chapter}-{current_volume.end_chapter}章")
+                parts.append(f"- Current volume: {current_volume.title}")
+                parts.append(f"- Volume spans chapters {current_volume.start_chapter}–{current_volume.end_chapter}")
 
         # ── Memory context ──
         if memory:
             st = memory.short_term
             if st:
                 parts.append("")
-                parts.append("## 前情提要")
-                parts.append(f"- 上一章摘要：{st.current_chapter_summary}")
+                parts.append("## Previous Events")
+                parts.append(f"- Previous chapter summary: {st.current_chapter_summary}")
                 if st.unresolved_hooks:
-                    parts.append(f"- 未解决钩子：{st.unresolved_hooks}")
+                    parts.append(f"- Unresolved hooks: {st.unresolved_hooks}")
 
         # ── THE CHAPTER TEXT ──
         parts.append("")
-        parts.append("## 本章正文（请逐段审阅）")
+        parts.append("## Chapter Text")
         parts.append("")
         # Include full text for thorough review
         max_len = 8000
@@ -374,53 +374,32 @@ class ReviewerAgent(BaseAgent):
             # Include first 1/3 and last 1/3, summarize middle
             third = max_len // 3
             parts.append(content[: third * 2])
-            parts.append(f"\n... (中间{len(content) - third * 3}字省略) ...\n")
+            parts.append(f"\n... ({len(content) - third * 3} characters omitted) ...\n")
             parts.append(content[-third:])
         else:
             parts.append(content)
 
         # ── Review instructions ──
         parts.append("")
-        parts.append("## 审阅指令")
+        parts.append("## Review Criteria")
         parts.append("""
-请从以下维度逐一审查（不要跳过任何维度）：
+### 1. Plot logic (plot_holes)
+Identify forced events, missing causes, implausible decisions, and timeline problems.
 
-### 1. 情节逻辑 (plot_holes)
-- 有没有"因为剧情需要所以发生"的机械事件？
-- 因果链是否完整？每个事件有合理的前因吗？
-- 有没有角色做出不符合其智商的决策？
-- 时间线是否合理？
+### 2. Character consistency (character_inconsistencies)
+Check actions against established traits, motives, and current states. Check whether characters have distinct voices. Flag out-of-character moments.
 
-### 2. 角色一致性 (character_inconsistencies)
-- 角色行为是否与其性格、动机、当前状态一致？
-- 角色对话是否有个性，还是所有角色说话都一样？
-- 有没有OOC（角色崩坏）的瞬间？
+### 3. Payoffs and pacing (reader_drop_points)
+Identify sections readers might skip. Assess how often satisfying developments occur, whether the first 300 words hook the reader, and whether the ending makes them want the next chapter. Check the emotional curve for variation.
 
-### 3. 爽点与节奏 (reader_drop_points)
-- 哪些段落会让读者觉得无聊想跳过？
-- 爽点密度是否足够？开篇300字有没有钩子？
-- 章末是否有让人必须点下一章的冲动？
-- 情绪曲线是否有起伏，还是平的？
+### 4. Missed opportunities (missed_opportunities)
+Identify important things the chapter omits and opportunities to develop the setting, advance foreshadowing, or strengthen payoffs.
 
-### 4. 错失机会 (missed_opportunities)
-- 本章应该做但没有做的事是什么？
-- 有没有可以加入的世界观展示？
-- 有没有可以推进的伏笔？
-- 有没有可以强化的爽点？
+### 5. Formulaic prose
+Flag phrases such as "in summary" and "it is worth noting," overly regular paragraph structure, emotions stated without supporting action, and purely functional dialogue.
 
-### 5. AI味检测
-- 有没有「综上所述」「值得注意的是」等机械表达？
-- 段落结构是否过于工整？
-- 情感描写是否空洞（tell而非show）？
-- 对话是否过于功能化？
-
-### 6. 总体评价
-- 本章最大的问题是什么？（必须指出至少一个）
-- revision_required: 是否需要强制修订？
-  - 如果有逻辑漏洞(plot_hole) → True
-  - 如果有角色崩坏(OOC) → True
-  - 如果评分 < 6.0 → True
-  - 否则 → False
+### 6. Overall assessment
+Identify at least one major problem. Set revision_required to true if there is a plot hole, an out-of-character moment, or a score below 6.0. Otherwise set it to false.
 """)
 
         return "\n".join(parts)

@@ -11,20 +11,20 @@ logger = logging.getLogger(__name__)
 # Module-level storage for scan data (set by routes before phase execution)
 _pending_scan_data: dict[str, str | None] = {}
 
-# Chinese labels for each phase
+# Display labels for each phase
 PHASE_LABELS = {
-    "project_init": "项目初始化",
-    "platform_scan": "平台扫榜",
-    "topic_selection": "选题研究",
-    "mini_arc_outline": "小事件大纲",
-    "bible_construction": "世界观构建",
-    "character_creation": "角色创建",
-    "master_outline": "大纲生成",
-    "chapter_planning": "章节规划",
-    "chapter_writing": "章节写作",
-    "quality_review": "质量审核",
-    "polish_revision": "润色修订",
-    "memory_update": "记忆更新",
+    "project_init": "Project Initialization",
+    "platform_scan": "Platform Rankings",
+    "topic_selection": "Topic Research",
+    "mini_arc_outline": "Opening Arc Outline",
+    "bible_construction": "Worldbuilding",
+    "character_creation": "Character Creation",
+    "master_outline": "Outline Generation",
+    "chapter_planning": "Chapter Planning",
+    "chapter_writing": "Chapter Writing",
+    "quality_review": "Quality Review",
+    "polish_revision": "Polish and Revision",
+    "memory_update": "Memory Update",
 }
 
 # Tab mapping for frontend auto-navigation

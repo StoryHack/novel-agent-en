@@ -1,5 +1,5 @@
 /**
- * Novel Agent V7 — 创作流水线
+ * Novel Agent V7 — Writing Pipeline
  */
 const App = {
     currentProjectId: null,
@@ -86,7 +86,7 @@ const App = {
     },
 
     // ================================================================
-    // 我的书库 — 纯项目列表
+    // My Library project list
     // ================================================================
     async _refreshProjects() {
         try { this._projects = await API.listProjects() || []; }
@@ -97,14 +97,14 @@ const App = {
         const container = document.getElementById('my-works-cards');
         if (!container) return;
         if (!this._projects.length) {
-            container.innerHTML = '<p class="empty-state">暂无项目，前往<a href="#workspace">工作台</a>开始创作</p>';
+            container.innerHTML = '<p class="empty-state">No projects yet. Open the <a href="#workspace">Workspace</a> to get started.</p>';
             return;
         }
         container.innerHTML = this._projects.map(p => {
-            const badge = p.current_chapter && p.total_chapters ? `${p.current_chapter}/${p.total_chapters}章` : '';
+            const badge = p.current_chapter && p.total_chapters ? `${p.current_chapter}/${p.total_chapters}` : '';
             return `<div class="card" data-project-id="${p.project_id}" style="cursor:pointer">
-                <h3>${this._esc(p.title || '未命名')}</h3>
-                <div class="meta">${badge || '尚未开始'}</div>
+                <h3>${this._esc(p.title || 'Untitled')}</h3>
+                <div class="meta">${badge || 'Not started'}</div>
                 <span class="status status-${p.status||'initialized'}">${p.status||'initialized'}</span>
             </div>`;
         }).join('');
@@ -117,7 +117,7 @@ const App = {
         this._initPipeline();
         try {
             const p = await API.getProject(id);
-            const title = p.config?.title || '未命名';
+            const title = p.config?.title || 'Untitled';
             this._showProjectHeader(title);
             const meta = p.meta;
             if (meta && meta.current_phase && meta.current_phase !== 'idle') {
@@ -131,7 +131,7 @@ const App = {
         if (!this.currentProjectId) return;
         try {
             const p = await API.getProject(this.currentProjectId);
-            document.getElementById('project-title').textContent = p.config.title || '未命名';
+            document.getElementById('project-title').textContent = p.config.title || 'Untitled';
             document.getElementById('overview-content').innerHTML = Components.overviewEditable(p);
             // Detect if already complete
             const tc = p.meta?.total_chapters || 0;
@@ -170,11 +170,10 @@ const App = {
     async viewChapter(num) {
         try {
             const ch = await API.getChapter(this.currentProjectId, num);
-            const cn = Components._CN_NUM[num] || num;
-            let html = `<h3>第${cn}章 ${Components._esc(ch.plan?.title||ch.title||'')}</h3>`;
+            let html = `<h3>Chapter ${num} ${Components._esc(ch.plan?.title||ch.title||'')}</h3>`;
             // Show status
-            const statusLabels = { planned:'已规划', writing:'写作中', reviewing:'审核中', polishing:'润色中', done:'已完成' };
-            if (ch.status) html += `<p>状态：${statusLabels[ch.status]||ch.status}</p>`;
+            const statusLabels = { planned:'Planned', writing:'Writing', reviewing:'Reviewing', polishing:'Polishing', done:'Complete' };
+            if (ch.status) html += `<p>Status: ${statusLabels[ch.status]||ch.status}</p>`;
             // Show review if available
             if (ch.review) html += Components.reviewScores(ch.review.dimension_scores);
             if (ch.review?.issues) html += Components.issuesList(ch.review.issues);
@@ -183,35 +182,35 @@ const App = {
             if (ch.content) {
                 let cleanContent = ch.content.replace(/^#{1,4}\s+.+$/gm, '');
                 cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n').trim();
-                html += `<div style="display:flex;align-items:center;gap:8px;margin-top:12px"><strong>正文</strong><button class="btn btn-secondary btn-sm" onclick="App.toggleChapterEdit(${num})">编辑</button></div>`;
+                html += `<div style="display:flex;align-items:center;gap:8px;margin-top:12px"><strong>Chapter Text</strong><button class="btn btn-secondary btn-sm" onclick="App.toggleChapterEdit(${num})">Edit</button></div>`;
                 html += `<div id="chapter-display-${num}" style="white-space:pre-wrap;line-height:2;font-size:1rem;margin-top:8px">${Components._esc(cleanContent)}</div>`;
-                html += `<div id="chapter-editor-${num}" style="display:none"><textarea id="chapter-textarea-${num}" style="width:100%;min-height:300px;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:inherit;font-size:0.95rem;line-height:1.8;resize:vertical">${Components._esc(cleanContent)}</textarea><button class="btn btn-success btn-sm" onclick="App.saveChapterEdit(${num})" style="margin-top:8px">保存</button></div>`;
+                html += `<div id="chapter-editor-${num}" style="display:none"><textarea id="chapter-textarea-${num}" style="width:100%;min-height:300px;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:inherit;font-size:0.95rem;line-height:1.8;resize:vertical">${Components._esc(cleanContent)}</textarea><button class="btn btn-success btn-sm" onclick="App.saveChapterEdit(${num})" style="margin-top:8px">Save</button></div>`;
             } else if (ch.plan) {
-                html += `<p style="color:var(--text-secondary)">章节已规划，内容尚未生成。</p>`;
-                if (ch.plan.goal) html += `<p><strong>本章目标：</strong>${Components._esc(ch.plan.goal)}</p>`;
+                html += `<p style="color:var(--text-secondary)">This chapter has an outline and is ready to draft.</p>`;
+                if (ch.plan.goal) html += `<p><strong>Chapter Goal:</strong>${Components._esc(ch.plan.goal)}</p>`;
                 if (ch.plan.scenes?.length) {
                     const sceneTexts = ch.plan.scenes.map(s => {
                         if (typeof s === 'string') {
-                            // Clean raw markers: 【xxx】text（POV → just text
+                            // Strip scene labels and point-of-view markers.
                             let t = s.replace(/【[^】]+】/g, '').replace(/（POV.*?）|\(POV.*?\)/g, '').replace(/→/g, '').trim();
                             return Components._esc(t.substring(0, 80));
                         }
                         return Components._esc((s.setting || s.goal || '').substring(0, 80));
                     }).filter(Boolean);
-                    if (sceneTexts.length) html += `<p><strong>场景：</strong>${sceneTexts.join(' → ')}</p>`;
+                    if (sceneTexts.length) html += `<p><strong>Scene:</strong>${sceneTexts.join(' → ')}</p>`;
                 }
-                html += `<button class="btn btn-primary btn-sm" onclick="App.startWorkflow()" style="margin-top:8px">继续生成</button>`;
+                html += `<button class="btn btn-primary btn-sm" onclick="App.startWorkflow()" style="margin-top:8px">Continue Writing</button>`;
             } else {
-                html += '<p style="color:var(--text-secondary)">该章节尚未生成。点击「继续生成」开始写作。</p>';
+                html += '<p style="color:var(--text-secondary)">Click Continue Writing to draft this chapter.</p>';
             }
             if (ch.content) {
-                html += `<div style="margin-top:16px"><a href="${API.getChapterMdUrl(this.currentProjectId, num)}" class="btn btn-secondary btn-sm">下载 Markdown</a></div>`;
+                html += `<div style="margin-top:16px"><a href="${API.getChapterMdUrl(this.currentProjectId, num)}" class="btn btn-secondary btn-sm">Download Markdown</a></div>`;
             }
             document.getElementById('chapter-modal-body').innerHTML = html;
             document.getElementById('chapter-modal').classList.add('active');
             document.querySelector('.modal-close').onclick = () => document.getElementById('chapter-modal').classList.remove('active');
             document.getElementById('chapter-modal').onclick = (e) => { if (e.target === document.getElementById('chapter-modal')) document.getElementById('chapter-modal').classList.remove('active'); };
-        } catch (err) { alert(`加载失败: ${err.message}`); }
+        } catch (err) { alert(`Loading failed: ${err.message}`); }
     },
 
     exportDocx() { if (this.currentProjectId) window.open(API.getExportDocxUrl(this.currentProjectId)); },
@@ -236,12 +235,12 @@ const App = {
                 this._saveEdit(sectionId, newValue);
             }
             editor.style.display = 'none'; display.style.display = '';
-            btn.textContent = '编辑';
+            btn.textContent = 'Edit';
         } else {
             const textarea = editor.querySelector('textarea');
             if (textarea) textarea.value = display.innerText;
             editor.style.display = ''; display.style.display = 'none';
-            btn.textContent = '保存';
+            btn.textContent = 'Save';
         }
     },
 
@@ -256,13 +255,13 @@ const App = {
             } else if (sectionId.startsWith('outline-')) {
                 await API.updateOutlineSection(this.currentProjectId, sectionId, value);
             }
-            document.getElementById('phase-label').textContent = '已保存 ✓';
+            document.getElementById('phase-label').textContent = 'Saved ✓';
             setTimeout(() => {
                 const pl = document.getElementById('phase-label');
-                if (pl && pl.textContent === '已保存 ✓') pl.textContent = '就绪';
+                if (pl && pl.textContent === 'Saved ✓') pl.textContent = 'Ready';
             }, 2000);
         } catch (err) {
-            alert(`保存失败: ${err.message}`);
+            alert(`Save failed: ${err.message}`);
         }
     },
 
@@ -273,9 +272,9 @@ const App = {
         if (!this.currentProjectId) return;
         try {
             await API.startWorkflow(this.currentProjectId);
-            document.getElementById('phase-label').textContent = '启动中...';
+            document.getElementById('phase-label').textContent = 'Starting...';
             document.getElementById('progress-fill').style.width = '2%';
-        } catch (err) { alert(`启动失败: ${err.message}`); }
+        } catch (err) { alert(`Could not start: ${err.message}`); }
     },
 
     async confirmPhase() {
@@ -284,23 +283,23 @@ const App = {
         try {
             await API.confirmPhase(this.currentProjectId, insp || null);
             document.querySelector('.phase-confirm')?.remove();
-            document.getElementById('phase-label').textContent = '运行中...';
+            document.getElementById('phase-label').textContent = 'Running...';
             document.getElementById('progress-fill').style.width = '5%';
-        } catch (err) { alert(`确认失败: ${err.message}`); }
+        } catch (err) { alert(`Confirmation failed: ${err.message}`); }
     },
 
     async submitScan() {
         if (!this.currentProjectId) return;
         const feiluHtml = document.getElementById('scan-feilu')?.value || '';
         const fanqieHtml = document.getElementById('scan-fanqie')?.value || '';
-        if (!feiluHtml && !fanqieHtml) { alert('请至少粘贴一个平台的榜单页面内容'); return; }
+        if (!feiluHtml && !fanqieHtml) { alert('Paste rankings from at least one platform.'); return; }
         try {
             this._updatePipelineBadge('scan', 'running');
             document.getElementById('scan-input-area').style.display = 'none';
             document.getElementById('btn-start-scan').style.display = 'none';
             await API.submitScan(this.currentProjectId, feiluHtml || null, fanqieHtml || null);
             await API.startWorkflow(this.currentProjectId);
-        } catch (err) { alert(`提交失败: ${err.message}`); }
+        } catch (err) { alert(`Submission failed: ${err.message}`); }
     },
 
     /** Skip scan and go directly to bible construction */
@@ -309,10 +308,10 @@ const App = {
         this._updatePipelineBadge('scan', 'done');
         this._updatePipelineBadge('bible', 'active');
         try { await API.startWorkflow(this.currentProjectId); }
-        catch (err) { alert(`启动失败: ${err.message}`); }
+        catch (err) { alert(`Could not start: ${err.message}`); }
     },
 
-    /** Initialize pipeline — first step is scan with "开始扫榜" button */
+    /** Initialize pipeline — first step is scan with "Scan Rankings" button */
     _initPipeline() {
         const steps = ['scan','topic','arc','bible','chars','outline','write'];
         steps.forEach(s => { this._pipelineState[s] = 'pending'; });
@@ -341,8 +340,8 @@ const App = {
             else if (status === 'done') stepEl.classList.add('done');
         }
         if (badgeEl) {
-            const labels = { scan:'平台扫榜', topic:'选题研究', arc:'小事件大纲', bible:'世界观构建', chars:'角色创建', outline:'大纲生成', write:'章节写作' };
-            const statusLabels = { pending:'待执行', active:'当前步骤', running:'执行中...', done:'已完成 ✓' };
+            const labels = { scan:'Platform Rankings', topic:'Topic Research', arc:'Opening Arc Outline', bible:'Worldbuilding', chars:'Character Creation', outline:'Outline Generation', write:'Chapter Writing' };
+            const statusLabels = { pending:'Pending', active:'Current step', running:'Running...', done:'Complete ✓' };
             badgeEl.textContent = statusLabels[status] || status;
             badgeEl.className = 'pipeline-badge ' + (status === 'done' ? 'done' : status === 'running' ? 'running' : status === 'active' ? 'active' : '');
         }
@@ -381,14 +380,14 @@ const App = {
         document.getElementById('btn-start-scan').style.display = 'none';
         document.getElementById('scan-input-area').style.display = 'none';
         try { await API.startWorkflow(this.currentProjectId); }
-        catch (err) { alert(`启动失败: ${err.message}`); }
+        catch (err) { alert(`Could not start: ${err.message}`); }
     },
 
     async confirmDecision(decision) {
         if (!this.currentProjectId) return;
         const fb = document.getElementById('feedback-input')?.value || '';
         try { await API.submitDecision(this.currentProjectId, decision, fb || null, null); document.querySelector('.confirm-panel')?.remove(); }
-        catch (err) { alert(`提交失败: ${err.message}`); }
+        catch (err) { alert(`Submission failed: ${err.message}`); }
     },
 
     toggleChapterEdit(num) {
@@ -413,27 +412,27 @@ const App = {
             document.getElementById(`chapter-display-${num}`).innerHTML = Components._esc(newContent);
             document.getElementById(`chapter-editor-${num}`).style.display = 'none';
             document.getElementById(`chapter-display-${num}`).style.display = '';
-            document.getElementById('phase-label').textContent = '已保存 ✓';
-            setTimeout(() => { const pl = document.getElementById('phase-label'); if (pl && pl.textContent === '已保存 ✓') pl.textContent = '就绪'; }, 2000);
-        } catch (err) { alert(`保存失败: ${err.message}`); }
+            document.getElementById('phase-label').textContent = 'Saved ✓';
+            setTimeout(() => { const pl = document.getElementById('phase-label'); if (pl && pl.textContent === 'Saved ✓') pl.textContent = 'Ready'; }, 2000);
+        } catch (err) { alert(`Save failed: ${err.message}`); }
     },
 
     async deleteChapter(num) {
-        if (!this.currentProjectId || !confirm(`确认删除第${num}章？此操作不可恢复。`)) return;
+        if (!this.currentProjectId || !confirm(`Delete Chapter ${num}? This action is permanent.`)) return;
         try {
             await API.deleteChapter(this.currentProjectId, num);
             this._loadTabContent('chapters');
-        } catch (err) { alert(`删除失败: ${err.message}`); }
+        } catch (err) { alert(`Delete failed: ${err.message}`); }
     },
 
     async deleteCurrentProject() {
-        if (!this.currentProjectId || !confirm('确认删除？')) return;
+        if (!this.currentProjectId || !confirm('Delete this project?')) return;
         try {
             await API.deleteProject(this.currentProjectId);
             this.currentProjectId = null; this._workflowDone = false; if (this.ws) { this.ws.close(); this.ws = null; }
             await this._refreshProjects();
             this._navigate('my-works');
-        } catch (err) { alert(`删除失败: ${err.message}`); }
+        } catch (err) { alert(`Delete failed: ${err.message}`); }
     },
 
     // ================================================================
@@ -453,7 +452,7 @@ const App = {
         const { type, phase, progress, message, chapter, scores, token, data: msgData } = msg;
         const pb = document.getElementById('progress-fill');
         const pl = document.getElementById('phase-label');
-        const pm = { platform_scan:'平台扫榜', topic_selection:'选题研究', mini_arc_outline:'小事件大纲', bible_construction:'构建世界观', character_creation:'创建角色', master_outline:'生成大纲', chapter_planning:'规划章节', chapter_writing:'写作中', quality_review:'审阅中', polish_revision:'润色中', memory_update:'更新记忆' };
+        const pm = { platform_scan:'Platform Rankings', topic_selection:'Topic Research', mini_arc_outline:'Opening Arc Outline', bible_construction:'Building the World', character_creation:'Creating Characters', master_outline:'Generating Outline', chapter_planning:'Planning Chapters', chapter_writing:'Writing', quality_review:'Reviewing', polish_revision:'Polishing', memory_update:'Updating Memory' };
         const tm = { platform_scan:'topics', topic_selection:'topics', mini_arc_outline:'topics', bible_construction:'bible', character_creation:'characters', master_outline:'outline', chapter_planning:'chapters', chapter_writing:'chapters' };
         // Pipeline badge mapping
         const phaseToStep = { platform_scan:'scan', topic_selection:'topic', mini_arc_outline:'arc', bible_construction:'bible', character_creation:'chars', master_outline:'outline' };
@@ -472,7 +471,7 @@ const App = {
                 }
                 break;
             case 'phase_complete':
-                if (pl) pl.textContent = `${pm[phase]||phase} 完成 ✓`;
+                if (pl) pl.textContent = `${pm[phase]||phase} complete ✓`;
                 if (pb) pb.style.width = '100%';
                 if (phaseToStep[phase]) {
                     const step = phaseToStep[phase];
@@ -513,12 +512,12 @@ const App = {
             case 'workflow_complete':
                 this._workflowDone = true;
                 this._updatePipelineBadge('write', 'done');
-                if (pl) pl.textContent = '全部完成 ✓';
+                if (pl) pl.textContent = 'All steps complete ✓';
                 if (pb) pb.style.width = '100%';
                 if (this.currentProjectId) this._loadTabContent('chapters');
                 this._refreshProjects();
                 break;
-            case 'error': alert(`工作流错误: ${data.error}`); break;
+            case 'error': alert(`Workflow error: ${data.error}`); break;
         }
     },
 
@@ -553,38 +552,38 @@ const App = {
                 allEntries.push({...e, _platform: platformName});
             });
         };
-        collectEntries(data.feilu, '飞卢');
-        collectEntries(data.fanqie, '番茄');
+        collectEntries(data.feilu, 'Feilu');
+        collectEntries(data.fanqie, 'Fanqie');
 
         // Dashboard tiles
         html += '<div class="dash-grid">';
-        html += `<div class="dash-tile accent"><div class="dash-num">${totalEntries}</div><div class="dash-label">扫描书籍</div></div>`;
+        html += `<div class="dash-tile accent"><div class="dash-num">${totalEntries}</div><div class="dash-label">Books Scanned</div></div>`;
         const platforms = [data.feilu, data.fanqie].filter(Boolean);
-        html += `<div class="dash-tile success"><div class="dash-num">${platforms.length}</div><div class="dash-label">覆盖平台</div></div>`;
-        html += `<div class="dash-tile warning"><div class="dash-num">${Object.keys(genreCount).length}</div><div class="dash-label">识别题材</div></div>`;
+        html += `<div class="dash-tile success"><div class="dash-num">${platforms.length}</div><div class="dash-label">Platforms Scanned</div></div>`;
+        html += `<div class="dash-tile warning"><div class="dash-num">${Object.keys(genreCount).length}</div><div class="dash-label">Genres Identified</div></div>`;
         html += '</div>';
 
         // Bar chart of top genres
         const sortedGenres = Object.entries(genreCount).sort((a,b) => b[1]-a[1]).slice(0, 8);
         if (sortedGenres.length) {
             const maxCount = sortedGenres[0][1];
-            html += '<p style="font-weight:600;font-size:0.82rem;margin-bottom:6px">📊 热门题材分布</p>';
+            html += '<p style="font-weight:600;font-size:0.82rem;margin-bottom:6px">📊 Trending Genres</p>';
             html += '<div class="bar-chart">';
             sortedGenres.forEach(([g, c], i) => {
                 const pct = Math.round((c/maxCount)*100);
                 const colors = ['','warm','cool','green'];
-                html += `<div class="bar-row"><span class="bar-label">${Components._esc(g)}</span><div class="bar-track"><div class="bar-fill ${colors[i%4]||''}" style="width:${pct}%"></div></div><span class="bar-val">${c}</span></div>`;
+                html += `<div class="bar-row"><span class="bar-label">${Components._esc(g)}</span><div class="bar-track"><div class="bar-fill ${colors[i%4]||''}" style="width: ${pct}%"></div></div><span class="bar-val">${c}</span></div>`;
             });
             html += '</div>';
         }
 
         // Book list by platform
         platforms.forEach(p => {
-            const isFeilu = p.platform === '飞卢' || data.feilu === p;
+            const isFeilu = ['Feilu', '\u98de\u5362'].includes(p.platform) || data.feilu === p;
             const entries = p.entries || [];
-            html += `<div class="scan-mini-card" style="margin-bottom:10px"><h4>${isFeilu?'🔍 飞卢':'🍅 番茄'} · ${Components._esc(p.list_name||'榜单')} · ${Components._esc(p.date||'')}</h4>`;
+            html += `<div class="scan-mini-card" style="margin-bottom:10px"><h4>${isFeilu?'🔍 Feilu':'🍅 Fanqie'} · ${Components._esc(p.list_name||'Rankings')} · ${Components._esc(p.date||'')}</h4>`;
             if (p.scan_failed) {
-                html += `<p style="color:var(--error)">${Components._esc(p.summary||'扫榜失败')}</p>`;
+                html += `<p style="color:var(--error)">${Components._esc(p.summary||'Ranking scan failed')}</p>`;
             } else {
                 html += `<p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:8px">${Components._esc((p.summary||'').substring(0,120))}</p>`;
                 if (entries.length) {
@@ -641,10 +640,10 @@ const App = {
                 aiArea.style.display = 'block';
                 const scanOk = (data.feilu?.entries?.length || 0) + (data.fanqie?.entries?.length || 0) > 0;
                 const msg = scanOk
-                    ? '⚠️ 扫榜已完成但未成功生成候选题材，可能是AI生成步骤出现问题。请点击重试，或在下方输入灵感手动生成。'
-                    : '⚠️ 未生成候选题材，可能扫榜数据不足。请点击重试按钮，或在下方输入你的灵感。';
+                    ? '⚠️ The scan completed, but no concepts were generated. Retry or enter your own idea below.'
+                    : '⚠️ No concepts were generated. Try again with more ranking data or enter your own idea below.';
                 aiArea.querySelector('p').innerHTML = msg +
-                    '&nbsp;<button class="btn btn-warning btn-sm" onclick="App.retryPhase(\'topic_selection\')" style="margin-left:8px">🔄 重新生成选题</button>';
+                    '&nbsp;<button class="btn btn-warning btn-sm" onclick="App.retryPhase(\'topic_selection\')" style="margin-left:8px">🔄 Regenerate Concepts</button>';
                 aiArea.querySelector('p').style.color = 'var(--warning)';
             }
             return;
@@ -660,7 +659,7 @@ const App = {
                 listHtml += `<div class="topic-candidate-row" data-genre="${name}" onclick="App.toggleCandidate('${name}')">
                     <div class="topic-candidate-check">✓</div>
                     <span class="topic-candidate-name">${name}</span>
-                    <span class="topic-candidate-score">${score}${t.score?'分':''}</span>
+                    <span class="topic-candidate-score">${score}${t.score?' pts':''}</span>
                 </div>`;
             });
             candidatesList.innerHTML = listHtml;
@@ -677,18 +676,18 @@ const App = {
         if (row) row.classList.toggle('checked', this._checkedCandidates[genreName]);
         const count = Object.values(this._checkedCandidates).filter(Boolean).length;
         const hint = document.getElementById('candidate-hint');
-        if (hint) hint.textContent = `已选 ${count} 个`;
+        if (hint) hint.textContent = `${count} selected`;
     },
 
     /** Generate synopsis cards for checked candidates, calling LLM on demand */
     async generateSynopses() {
         const checked = Object.entries(this._checkedCandidates).filter(([_,v]) => v).map(([k]) => k);
-        if (!checked.length) { alert('请至少勾选一个题材'); return; }
+        if (!checked.length) { alert('Select at least one concept.'); return; }
 
         const cardsContainer = document.getElementById('topic-synopsis-cards');
         if (!cardsContainer) return;
         cardsContainer.style.display = 'block';
-        cardsContainer.innerHTML = '<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:8px">📝 正在生成书名和简介...</p>';
+        cardsContainer.innerHTML = '<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:8px">📝 Generating titles and synopses...</p>';
 
         this._synopsisCards = [];
         this._selectedSynopsisIdx = -1;
@@ -706,7 +705,7 @@ const App = {
             // If no pre-generated synopsis, call API to generate on demand
             if (!title || !synopsis) {
                 try {
-                    cardsContainer.innerHTML = `<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:8px">📝 正在为「${Components._esc(genreName)}」生成书名和简介...</p>`;
+                    cardsContainer.innerHTML = `<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:8px">📝 Generating titles and synopses for ${Components._esc(genreName)}...</p>`;
                     const result = await API.generateSynopsis(this.currentProjectId, genreName, inspiration);
                     title = result.final_title || genreName;
                     synopsis = result.final_synopsis || '';
@@ -722,7 +721,7 @@ const App = {
             const cardIdx = this._synopsisCards.length - 1;
             const cardHtml = this._renderSynopsisCard(card, cardIdx);
             if (idx === 0) {
-                cardsContainer.innerHTML = '<p style="font-weight:600;font-size:0.82rem;margin-bottom:6px">📝 书名和简介（点击圆圈选择，标题和简介可编辑）</p>';
+                cardsContainer.innerHTML = '<p style="font-weight:600;font-size:0.82rem;margin-bottom:6px">📝 Select a title and synopsis. You can edit both.</p>';
             }
             cardsContainer.insertAdjacentHTML('beforeend', cardHtml);
         }
@@ -736,14 +735,14 @@ const App = {
         const name = Components._esc(card.genreName);
         return `<div class="synopsis-card" id="synopsis-card-${idx}">
             <div class="synopsis-card-header">
-                <div class="synopsis-radio" onclick="App.selectSynopsisCard(${idx})" title="选择这个书名"></div>
+                <div class="synopsis-radio" onclick="App.selectSynopsisCard(${idx})" title="Select this title"></div>
                 <input class="synopsis-title-input" id="synopsis-title-${idx}" value="${Components._esc(card.editedTitle)}" onchange="App._synopsisCards[${idx}].editedTitle=this.value">
             </div>
             <div class="synopsis-body">
                 <textarea class="synopsis-desc-input" id="synopsis-desc-${idx}" onchange="App._synopsisCards[${idx}].editedSynopsis=this.value">${Components._esc(card.editedSynopsis)}</textarea>
             </div>
             <div class="synopsis-meta">
-                <span>题材：${name}</span>
+                <span>Genre: ${name}</span>
             </div>
         </div>`;
     },
@@ -762,10 +761,10 @@ const App = {
         const resultsEl = document.getElementById('topic-ai-results');
         const btn = document.getElementById('btn-ai-generate');
         const insp = input?.value?.trim();
-        if (!insp) { alert('请先输入灵感或想法'); return; }
+        if (!insp) { alert('Enter an idea first.'); return; }
 
-        btn.textContent = '生成中...'; btn.disabled = true;
-        resultsEl.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">AI 正在分析榜单数据并生成书名...</span>';
+        btn.textContent = 'Generating...'; btn.disabled = true;
+        resultsEl.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">Analyzing rankings and generating titles...</span>';
 
         try {
             const r = await fetch('/api/projects/' + this.currentProjectId + '/ai-titles', {
@@ -773,10 +772,10 @@ const App = {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({inspiration: insp})
             });
-            if (!r.ok) throw new Error((await r.json()).detail || '请求失败');
+            if (!r.ok) throw new Error((await r.json()).detail || 'Request failed');
             const data = await r.json();
             if (data.titles?.length) {
-                resultsEl.innerHTML = '<p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:4px">AI 生成的书名（点击添加到候选列表）：</p>';
+                resultsEl.innerHTML = '<p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:4px">Click a generated title to add it to the candidates.</p>';
                 data.titles.forEach(t => {
                     const chip = document.createElement('span');
                     chip.className = 'tag-chip purple';
@@ -803,18 +802,18 @@ const App = {
                             }
                             const count = Object.values(this._checkedCandidates).filter(Boolean).length;
                             const hint = document.getElementById('candidate-hint');
-                            if (hint) hint.textContent = `已选 ${count} 个`;
+                            if (hint) hint.textContent = `${count} selected`;
                         }
                     };
                     resultsEl.appendChild(chip);
                 });
             } else {
-                resultsEl.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">未生成结果，请尝试更具体的灵感描述</span>';
+                resultsEl.innerHTML = '<span style="color:var(--text-secondary);font-size:0.82rem">No titles were generated. Try a more specific idea.</span>';
             }
         } catch (err) {
-            resultsEl.innerHTML = `<span style="color:var(--error);font-size:0.82rem">生成失败: ${err.message}</span>`;
+            resultsEl.innerHTML = `<span style="color:var(--error);font-size:0.82rem">Generation failed: ${err.message}</span>`;
         } finally {
-            btn.textContent = '生成'; btn.disabled = false;
+            btn.textContent = 'Generate'; btn.disabled = false;
         }
     },
 
@@ -829,9 +828,9 @@ const App = {
 
         if (!entries.length) {
             el.innerHTML = `<div style="padding:16px;border:1px dashed var(--warning);border-radius:8px;text-align:center">
-                <p style="color:var(--warning);margin-bottom:12px">⚠️ 大纲生成未完成（可能是模型结构化输出失败）</p>
-                <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px">请在下方输入框中补充更多细节，然后点击重新生成</p>
-                <button class="btn btn-warning" onclick="App.retryPhase('mini_arc_outline')" style="margin-right:8px">🔄 重新生成大纲</button>
+                <p style="color:var(--warning);margin-bottom:12px">⚠️ The model could not generate a complete outline.</p>
+                <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px">Add more detail below and regenerate the outline.</p>
+                <button class="btn btn-warning" onclick="App.retryPhase('mini_arc_outline')" style="margin-right:8px">🔄 Regenerate Outline</button>
             </div>`;
             el.style.display = 'block';
             // Show the confirm/inspiration area so user can add details
@@ -843,16 +842,16 @@ const App = {
         // Stats
         const totalChapters = entries.reduce((sum, [_,v]) => sum + (v.chapters?.length||0), 0);
         html += '<div class="dash-grid">';
-        html += `<div class="dash-tile accent"><div class="dash-num">${entries.length}</div><div class="dash-label">生成方案</div></div>`;
-        html += `<div class="dash-tile success"><div class="dash-num">${totalChapters}</div><div class="dash-label">总章节数</div></div>`;
-        html += `<div class="dash-tile warning"><div class="dash-num">2万</div><div class="dash-label">单方案字数</div></div>`;
+        html += `<div class="dash-tile accent"><div class="dash-num">${entries.length}</div><div class="dash-label">Outlines</div></div>`;
+        html += `<div class="dash-tile success"><div class="dash-num">${totalChapters}</div><div class="dash-label">Total Chapters</div></div>`;
+        html += `<div class="dash-tile warning"><div class="dash-num">20,000</div><div class="dash-label">Words per Outline</div></div>`;
         html += '</div>';
 
         entries.forEach(([genre, arc]) => {
-            html += `<div style="margin-bottom:12px"><p style="font-weight:600;margin-bottom:6px">📋 ${Components._esc(genre)} · ${Components._esc(arc.total_words||'约2万字')}</p>`;
+            html += `<div style="margin-bottom:12px"><p style="font-weight:600;margin-bottom:6px">📋 ${Components._esc(genre)} · ${Components._esc(arc.total_words||'About 20,000 words')}</p>`;
             html += '<div class="timeline">';
             (arc.chapters||[]).slice(0, 10).forEach((c, i) => {
-                html += `<div class="tl-node${i<3?' done':''}"><div class="tl-card"><div class="tl-title">第${c.chapter_number||(i+1)}章</div><div class="tl-sub">${Components._esc((c.goal||c.conflict||'').substring(0,50))}</div></div></div>`;
+                html += `<div class="tl-node${i<3?' done':''}"><div class="tl-card"><div class="tl-title">Chapter ${c.chapter_number||(i+1)}</div><div class="tl-sub">${Components._esc((c.goal||c.conflict||'').substring(0,50))}</div></div></div>`;
             });
             html += '</div></div>';
         });
@@ -871,10 +870,10 @@ const App = {
 
         // Dashboard tiles
         html += '<div class="dash-grid">';
-        html += `<div class="dash-tile accent"><div class="dash-num">${w.name ? 1 : 0}</div><div class="dash-label">世界观</div></div>`;
-        html += `<div class="dash-tile success"><div class="dash-num">${factions.length}</div><div class="dash-label">势力组织</div></div>`;
-        html += `<div class="dash-tile warning"><div class="dash-num">${themes.length}</div><div class="dash-label">核心主题</div></div>`;
-        html += `<div class="dash-tile accent"><div class="dash-num">${w.magic_system?'✓':'—'}</div><div class="dash-label">力量体系</div></div>`;
+        html += `<div class="dash-tile accent"><div class="dash-num">${w.name ? 1 : 0}</div><div class="dash-label">Worldbuilding</div></div>`;
+        html += `<div class="dash-tile success"><div class="dash-num">${factions.length}</div><div class="dash-label">Factions</div></div>`;
+        html += `<div class="dash-tile warning"><div class="dash-num">${themes.length}</div><div class="dash-label">Core Themes</div></div>`;
+        html += `<div class="dash-tile accent"><div class="dash-num">${w.magic_system?'✓':'—'}</div><div class="dash-label">Power System</div></div>`;
         html += '</div>';
 
         // World summary
@@ -887,7 +886,7 @@ const App = {
 
         // Faction chips
         if (factions.length) {
-            html += '<p style="font-weight:600;font-size:0.8rem;margin-top:8px">势力：</p>';
+            html += '<p style="font-weight:600;font-size:0.8rem;margin-top:8px">Factions:</p>';
             factions.forEach(f => {
                 html += `<span class="tag-chip purple">${Components._esc(f.name)}</span>`;
             });
@@ -896,7 +895,7 @@ const App = {
 
         // Style contract summary
         if (style.tone) {
-            html += '<p style="font-size:0.78rem;color:var(--text-secondary);margin-top:8px">文风：';
+            html += '<p style="font-size:0.78rem;color:var(--text-secondary);margin-top:8px">Style: ';
             html += `<span class="tag-chip gray">${Components._L(Components.TONE, style.tone)}</span>`;
             if (style.pacing_preference) html += `<span class="tag-chip gray">${Components._L(Components.PACING, style.pacing_preference)}</span>`;
             if (style.sentence_style) html += `<span class="tag-chip gray">${Components._L(Components.SENTENCE, style.sentence_style)}</span>`;
@@ -915,11 +914,11 @@ const App = {
 
         // Stats
         html += '<div class="dash-grid">';
-        html += `<div class="dash-tile accent"><div class="dash-num">${list.length}</div><div class="dash-label">角色总数</div></div>`;
+        html += `<div class="dash-tile accent"><div class="dash-num">${list.length}</div><div class="dash-label">Total Characters</div></div>`;
         const roles = { protagonist:0, antagonist:0, deuteragonist:0, supporting:0, mentor:0 };
         list.forEach(c => { if (roles[c.role] !== undefined) roles[c.role]++; });
-        html += `<div class="dash-tile success"><div class="dash-num">${roles.protagonist||0}</div><div class="dash-label">主角</div></div>`;
-        html += `<div class="dash-tile warning"><div class="dash-num">${roles.antagonist||0}</div><div class="dash-label">反派</div></div>`;
+        html += `<div class="dash-tile success"><div class="dash-num">${roles.protagonist||0}</div><div class="dash-label">Protagonist</div></div>`;
+        html += `<div class="dash-tile warning"><div class="dash-num">${roles.antagonist||0}</div><div class="dash-label">Antagonist</div></div>`;
         html += '</div>';
 
         // Character cards
@@ -931,7 +930,7 @@ const App = {
                 ${roleLabel?`<span class="tag-chip purple">${roleLabel}</span>`:''}
                 ${archetypeLabel?`<span class="tag-chip blue">${archetypeLabel}</span>`:''}
                 <p style="font-size:0.8rem;margin-top:4px;color:var(--text-secondary)">${Components._esc((c.personality||'').substring(0,80))}</p>
-                ${c.motivation?`<p style="font-size:0.78rem;color:var(--text-secondary)">动机：${Components._esc(c.motivation.substring(0,60))}</p>`:''}
+                ${c.motivation?`<p style="font-size:0.78rem;color:var(--text-secondary)">Motivation: ${Components._esc(c.motivation.substring(0,60))}</p>`:''}
             </div>`;
         });
 
@@ -949,9 +948,9 @@ const App = {
 
         // Stats
         html += '<div class="dash-grid">';
-        html += `<div class="dash-tile accent"><div class="dash-num">${volumes.length}</div><div class="dash-label">分卷</div></div>`;
-        html += `<div class="dash-tile success"><div class="dash-num">${data.chapter_count||'?'}</div><div class="dash-label">计划章节</div></div>`;
-        html += `<div class="dash-tile warning"><div class="dash-num">${mainPlot.length+subplots.length}</div><div class="dash-label">故事线</div></div>`;
+        html += `<div class="dash-tile accent"><div class="dash-num">${volumes.length}</div><div class="dash-label">Volumes</div></div>`;
+        html += `<div class="dash-tile success"><div class="dash-num">${data.chapter_count||'?'}</div><div class="dash-label">Planned Chapters</div></div>`;
+        html += `<div class="dash-tile warning"><div class="dash-num">${mainPlot.length+subplots.length}</div><div class="dash-label">Storylines</div></div>`;
         html += '</div>';
 
         // Logline
@@ -964,8 +963,8 @@ const App = {
             html += '<div class="volume-tree">';
             volumes.forEach(v => {
                 html += `<div class="volume-node">
-                    <div class="volume-header"><span class="vol-num">${v.number||'?'}</span>${Components._esc(v.title||'未命名')}</div>
-                    <div class="volume-body">第${v.start_chapter||'?'}-${v.end_chapter||'?'}章 · ${Components._esc(v.logline||'')}</div>
+                    <div class="volume-header"><span class="vol-num">${v.number||'?'}</span>${Components._esc(v.title||'Untitled')}</div>
+                    <div class="volume-body">Chapters ${v.start_chapter||'?'}-${v.end_chapter||'?'} · ${Components._esc(v.logline||'')}</div>
                 </div>`;
             });
             html += '</div>';
@@ -973,10 +972,10 @@ const App = {
 
         // Turning points timeline
         if (tps.length) {
-            html += '<p style="font-weight:600;font-size:0.8rem;margin-top:10px">⏳ 关键转折点</p>';
+            html += '<p style="font-weight:600;font-size:0.8rem;margin-top:10px">⏳ Key Turning Points</p>';
             html += '<div class="timeline">';
             tps.forEach(tp => {
-                html += `<div class="tl-node done"><div class="tl-card"><div class="tl-title">第${tp.chapter||'?'}章：${Components._L(Components.TURNING, tp.turning_type)}</div><div class="tl-sub">${Components._esc((tp.description||'').substring(0,80))}</div></div></div>`;
+                html += `<div class="tl-node done"><div class="tl-card"><div class="tl-title">Chapter ${tp.chapter||'?'}: ${Components._L(Components.TURNING, tp.turning_type)}</div><div class="tl-sub">${Components._esc((tp.description||'').substring(0,80))}</div></div></div>`;
             });
             html += '</div>';
         }
@@ -994,20 +993,20 @@ const App = {
                 const list = Array.isArray(chapters) ? chapters : [];
                 const done = list.filter(c => c.status === 'done').length;
                 html += '<div class="dash-grid">';
-                html += `<div class="dash-tile accent"><div class="dash-num">${done}</div><div class="dash-label">已完成</div></div>`;
-                html += `<div class="dash-tile success"><div class="dash-num">${list.length}</div><div class="dash-label">总章节</div></div>`;
+                html += `<div class="dash-tile accent"><div class="dash-num">${done}</div><div class="dash-label">Complete</div></div>`;
+                html += `<div class="dash-tile success"><div class="dash-num">${list.length}</div><div class="dash-label">Total Chapters</div></div>`;
                 html += '</div>';
                 if (list.length) {
                     html += '<div class="chapter-progress-grid">';
                     list.forEach(c => {
                         const isDone = c.status === 'done';
-                        html += `<div class="chapter-progress-chip ${isDone?'done':'active'}" title="第${c.chapter_number}章">${c.chapter_number}</div>`;
+                        html += `<div class="chapter-progress-chip ${isDone?'done':'active'}" title="Chapter ${c.chapter_number}">${c.chapter_number}</div>`;
                     });
                     html += '</div>';
                 }
                 el.innerHTML = html; el.style.display = 'block';
             }).catch(() => {
-                el.innerHTML = '<p style="font-size:0.85rem;color:var(--text-secondary)">章节生成进行中...</p>';
+                el.innerHTML = '<p style="font-size:0.85rem;color:var(--text-secondary)">Drafting chapters...</p>';
                 el.style.display = 'block';
             });
         }
@@ -1019,7 +1018,7 @@ const App = {
             const at = document.querySelector('#view-project .tab-content.active');
             if (!at) return;
             const c = document.createElement('div'); c.className = 'stream-container';
-            c.innerHTML = '<div class="stream-header">正在生成...</div><pre id="stream-output" class="stream-text streaming"></pre>';
+            c.innerHTML = '<div class="stream-header">Generating...</div><pre id="stream-output" class="stream-text streaming"></pre>';
             at.insertBefore(c, at.firstChild); el = document.getElementById('stream-output');
         }
         if (el) { el.textContent += token; el.scrollTop = el.scrollHeight; }
@@ -1040,7 +1039,7 @@ const App = {
     _switchTab(n) { document.querySelector(`#view-project .tab[data-tab="${n}"]`)?.click(); },
 
     // ================================================================
-    // 智能写作助手
+    // Writing Assistant
     // ================================================================
     async handleAssistantFile(event) {
         const file = event.target.files[0]; if (!file) return;
@@ -1049,9 +1048,9 @@ const App = {
             const r = await fetch('/api/projects/default/editor/upload', { method:'POST', body:fd });
             if (!r.ok) throw new Error((await r.json()).detail);
             const d = await r.json(); this._assistantContext = d.file_id;
-            document.getElementById('assistant-file-name').textContent = `已上传: ${d.filename}`;
-            this._addChatMsg('assistant', `已上传「${d.filename}」，共 ${d.size.toLocaleString()} 字。\n\n预览：\n${d.preview}`);
-        } catch (err) { alert(`上传失败: ${err.message}`); }
+            document.getElementById('assistant-file-name').textContent = `Uploaded: ${d.filename}`;
+            this._addChatMsg('assistant', `Uploaded ${d.filename} (${d.size.toLocaleString()} characters).\n\nPreview:\n${d.preview}`);
+        } catch (err) { alert(`Upload failed: ${err.message}`); }
     },
 
     quickChat(msg) { document.getElementById('chat-input').value = msg; this.sendAssistantMessage(); },
@@ -1071,7 +1070,7 @@ const App = {
                 const lines = buf.split('\n\n'); buf = lines.pop() || '';
                 for (const l of lines) { if (l.startsWith('data: ')) { const t = l.slice(6); if (t==='[DONE]') return; if (t.startsWith('[ERROR]')) { td.textContent += t.slice(8); return; } td.textContent += t; } }
             }
-        } catch (err) { td.textContent = `请求失败: ${err.message}`; }
+        } catch (err) { td.textContent = `Request failed: ${err.message}`; }
     },
 
     _addChatMsg(role, content) {
@@ -1084,10 +1083,10 @@ const App = {
     // ================================================================
     // New Project Form
     // ================================================================
-    // Form handlers removed — project creation is now automatic on "开始扫榜"
+    // Form handlers removed — project creation is now automatic on "Scan Rankings"
     _setupFormHandlers() {
         // No setup needed — the old modal form has been removed.
-        // Projects are auto-created when clicking "开始扫榜" and finalized on topic confirmation.
+        // Projects are auto-created when clicking "Scan Rankings" and finalized on topic confirmation.
     },
 
     _updateApiStatus(c) {
@@ -1104,16 +1103,16 @@ const App = {
         // 1. Auto-create draft project if needed
         if (!this.currentProjectId) {
             const draftConfig = {
-                title: '未命名项目',
-                inspiration: '待定',
-                genre: ['待定'],
-                target_readers: '网文读者',
+                title: 'Untitled Project',
+                inspiration: 'To be decided',
+                genre: ['To be decided'],
+                target_readers: 'Web fiction readers',
                 tone: '',
                 target_length: 'novel',
                 target_word_count: 80000,
                 style_reference: null,
                 taboo_content: [],
-                language: 'zh-CN',
+                language: 'en',
                 special_requirements: [],
             };
             try {
@@ -1122,8 +1121,8 @@ const App = {
                 this.currentProjectId = result.project_id;
                 this._connectWS(result.project_id);
                 this._initPipeline();
-                this._showProjectHeader('未命名项目');
-            } catch (err) { alert(`创建失败: ${err.message}`); return; }
+                this._showProjectHeader('Untitled Project');
+            } catch (err) { alert(`Could not create project: ${err.message}`); return; }
         }
 
         // 2. Hide start button, show scanning status
@@ -1136,7 +1135,7 @@ const App = {
             statusEl.style.cssText = 'padding:12px 0;font-size:0.9rem;color:var(--text-secondary);';
             scanBody.appendChild(statusEl);
         }
-        statusEl.innerHTML = '🔍 正在自动抓取飞卢和番茄榜单数据... <span style="color:var(--accent)">请稍候</span>';
+        statusEl.innerHTML = '🔍 Fetching Feilu and Fanqie rankings... <span style="color:var(--accent)">Please wait</span>';
 
         // 3. Try auto-scan
         try {
@@ -1144,18 +1143,18 @@ const App = {
 
             if (result.status === 'ok' || result.status === 'partial') {
                 // Scan succeeded (at least partially) — start workflow
-                statusEl.innerHTML = `📊 ${result.message}（飞卢:${result.feilu.chars}字符, 番茄:${result.fanqie.chars}字符）`;
+                statusEl.innerHTML = `📊 ${result.message} (Feilu: ${result.feilu.chars} characters, Fanqie: ${result.fanqie.chars} characters)`;
                 await API.startWorkflow(this.currentProjectId);
                 this._updatePipelineBadge('scan', 'running');
-                statusEl.innerHTML += '<br><span style="color:var(--success)">✅ 扫榜任务已提交，正在分析中...</span>';
+                statusEl.innerHTML += '<br><span style="color:var(--success)">✅ Scan submitted. Analyzing rankings...</span>';
                 return;
             } else {
                 // Both platforms failed
-                statusEl.innerHTML = `⚠️ ${result.message}<br><small style="color:var(--text-secondary)">飞卢和番茄榜单均抓取失败，请手动粘贴页面内容</small>`;
+                statusEl.innerHTML = `⚠️ ${result.message}<br><small style="color:var(--text-secondary)">Could not fetch rankings from either platform. Paste the rankings manually.</small>`;
             }
         } catch (err) {
             console.error('Auto-scan failed:', err);
-            statusEl.innerHTML = '⚠️ 自动扫榜失败，请手动粘贴榜单内容';
+            statusEl.innerHTML = '⚠️ Automatic scan failed. Paste the rankings manually.';
         }
 
         // 4. Fallback: show manual paste area
@@ -1166,10 +1165,10 @@ const App = {
     _showProjectHeader(title) {
         document.getElementById('workspace-default-title').style.display = 'none';
         document.getElementById('workspace-project-header').style.display = 'flex';
-        document.getElementById('project-title-display').textContent = '《' + title + '》';
+        document.getElementById('project-title-display').textContent = title;
     },
 
-    /** Navigate to 我的书库 */
+    /** Navigate to My Library */
     goToLibrary() {
         this._navigate('my-works');
     },
@@ -1205,7 +1204,7 @@ const App = {
         } else {
             // No synopsis card selected — use first checked candidate
             const checked = Object.entries(this._checkedCandidates || {}).filter(([_,v]) => v).map(([k]) => k);
-            if (!checked.length) { alert('请先勾选题材并生成简介，然后选择一个书名'); return; }
+            if (!checked.length) { alert('Select concepts and generate synopses, then choose a title.'); return; }
             genreName = checked[0];
             newTitle = genreName;
         }
@@ -1219,9 +1218,9 @@ const App = {
             this._updatePipelineBadge('topic', 'done');
             this._updatePipelineBadge('arc', 'active');
 
-            const confirmMsg = `选定题材：${genreName}。书名：《${newTitle}》。${insp}`;
+            const confirmMsg = `Selected genre: ${genreName}. Title: ${newTitle}. ${insp}`;
             await API.confirmPhase(this.currentProjectId, confirmMsg);
-        } catch (err) { alert(`确认失败: ${err.message}`); }
+        } catch (err) { alert(`Confirmation failed: ${err.message}`); }
     },
 
     // ================================================================
@@ -1239,7 +1238,7 @@ const App = {
             // Hide confirm bar
             const confirmEl = document.getElementById(`${step}-confirm-area`);
             if (confirmEl) confirmEl.style.display = 'none';
-        } catch (err) { alert(`确认失败: ${err.message}`); }
+        } catch (err) { alert(`Confirmation failed: ${err.message}`); }
     },
 
     /** Retry a failed phase (e.g. mini_arc_outline). */
@@ -1253,19 +1252,19 @@ const App = {
             const aiArea = document.getElementById('topic-ai-area');
             if (aiArea) {
                 aiArea.style.display = 'block';
-                aiArea.querySelector('p').innerHTML = '<span style="color:var(--accent)">🔄 正在重新生成候选题材，这可能需要1-2分钟...</span>';
+                aiArea.querySelector('p').innerHTML = '<span style="color:var(--accent)">🔄 Regenerating concepts. This may take a minute or two...</span>';
             }
             this._updatePipelineBadge('topic', 'running');
         }
         const resultEl = document.getElementById(`${phase === 'mini_arc_outline' ? 'arc' : phase}-result-area`);
-        if (resultEl) resultEl.innerHTML = '<p style="color:var(--accent)">🔄 正在重新生成...</p>';
+        if (resultEl) resultEl.innerHTML = '<p style="color:var(--accent)">🔄 Regenerating...</p>';
         // Pick up any inspiration the user added
         const inspEl = document.getElementById(`${phase === 'mini_arc_outline' ? 'arc' : phase}-inspiration`);
         const insp = inspEl?.value?.trim() || '';
         try {
             await API.retryPhase(this.currentProjectId, phase, insp || null);
         } catch (err) {
-            alert(`重试失败: ${err.message}`);
+            alert(`Retry failed: ${err.message}`);
         }
     },
 };

@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 # ========================================================================
 
 # Format: {model_id: (input_price_per_1M, output_price_per_1M)}
-# 币种见 PROVIDER_CURRENCY：Anthropic / OpenAI / OpenRouter 官方价目表为 USD，
-# DashScope（通义千问）/ ModelScope 官方价目表为 CNY。
+# See PROVIDER_CURRENCY. Anthropic, OpenAI, and OpenRouter prices are in USD.
+# DashScope and ModelScope prices are in CNY.
 # Prices are estimates — always check the provider's official pricing page.
 PROVIDER_PRICING = {
     "anthropic": {
@@ -58,8 +58,8 @@ PROVIDER_PRICING = {
         "Qwen/Qwen3-8B": (0.0, 0.0),
     },
     "dashscope": {
-        # Alibaba DashScope (Qwen 官方 API) —— 官方价目表以人民币（CNY）计价
-        # ⚠️ 以下数值为量级估算，qwen-max/plus/turbo 档位差异较大，请以官方价格页为准
+        # Alibaba Cloud DashScope (official Qwen API), priced in CNY.
+        # Estimated prices vary by model tier. Consult the provider's pricing page for billing.
         "qwen-max": (2.00, 6.00),
         "qwen-plus": (1.00, 2.00),
         "qwen-turbo": (0.15, 0.60),
@@ -76,22 +76,22 @@ FALLBACK_PRICE = (1.0, 5.0)  # conservative estimate
 # ========================================================================
 # Currency handling
 # ========================================================================
-# 各 provider 官方价目表的计价币种（上面的 PROVIDER_PRICING 按原生币种记录）
+# Native currencies for the provider prices above.
 PROVIDER_CURRENCY: dict[str, str] = {
     "anthropic": "USD",
     "openai": "USD",
     "openrouter": "USD",
-    "modelscope": "CNY",  # 阿里 ModelScope 魔搭，人民币计价（beta 期多为免费额度）
-    "dashscope": "CNY",   # 阿里云百炼 / 通义千问，人民币计价
-    "ollama": "USD",      # 本地推理免费，币种无意义
+    "modelscope": "CNY",  # Alibaba ModelScope (primarily free quotas during beta)
+    "dashscope": "CNY",   # Alibaba Cloud DashScope (Qwen)
+    "ollama": "USD",      # Local inference has zero provider charges
 }
 
 DEFAULT_CURRENCY = "USD"
-# 注意：人民币用全角「￥」(U+FFE5) 而不是半角「¥」(U+00A5)——
-# 后者在中文 Windows 控制台（GBK/cp936）里无法编码，print 时会抛 UnicodeEncodeError。
+# Use the fullwidth yuan sign (U+FFE5) for GBK/cp936 consoles.
+# The narrow yen sign can raise UnicodeEncodeError in GBK/cp936 Windows consoles.
 CURRENCY_SYMBOLS = {"USD": "$", "CNY": "￥"}
 
-# 仅用于展示时折算（不是结算汇率，请按需覆盖）
+# Exchange rate for display. Override it as needed.
 USD_TO_CNY = 7.2
 
 
@@ -101,7 +101,7 @@ def currency_symbol(currency: str) -> str:
 
 
 def convert_amount(amount: float, frm: str, to: str, usd_to_cny: float = USD_TO_CNY) -> float:
-    """在 USD / CNY 之间折算金额（仅用于展示对比，不用于结算）。"""
+    """Convert an amount between USD and CNY for comparison."""
     if not frm or not to or frm == to:
         return amount
     if frm == "USD" and to == "CNY":
@@ -200,7 +200,7 @@ class NovelCostEstimate:
     initial_write_total: float = 0.0
     with_one_revision_total: float = 0.0
     with_two_revisions_total: float = 0.0
-    # 金额的原生币种（由 provider 决定：Anthropic/OpenAI=USD，DashScope/ModelScope=CNY）
+    # Native currency for the provider.
     currency: str = DEFAULT_CURRENCY
 
     def format(
@@ -211,8 +211,8 @@ class NovelCostEstimate:
         """Render the estimate.
 
         Args:
-            display_currency: 想用哪种币种展示（"USD"/"CNY"）。默认用 provider 原生币种。
-            usd_to_cny: 展示折算用的汇率（不是结算汇率）。
+            display_currency: USD or CNY. Defaults to the provider's native currency.
+            usd_to_cny: Exchange rate used for display.
         """
         native = self.currency or DEFAULT_CURRENCY
         target = display_currency or native
@@ -220,9 +220,9 @@ class NovelCostEstimate:
         base = convert_amount(self.initial_write_total, native, target, usd_to_cny)
         one_rev = convert_amount(self.with_one_revision_total, native, target, usd_to_cny)
         two_rev = convert_amount(self.with_two_revisions_total, native, target, usd_to_cny)
-        currency_line = f"  Currency:        {target} ({native} 原生)"
+        currency_line = f"  Currency:        {target} (native currency: {native})"
         if target != native:
-            currency_line += f"，按 1 USD = {usd_to_cny} CNY 折算"
+            currency_line += f", converted at 1 USD = {usd_to_cny} CNY"
         lines = [
             "=" * 60,
             "  Novel Writing Cost Estimate",
@@ -431,6 +431,6 @@ def print_cost_comparison(total_chapters: int = 30):
         )
     print(f"  {'ollama (local)':<14} {'any (free)':<30} {'USD':<4} {'$0.00':>10} {'$0.00':>10} {'$0.00':>11}")
     print(f"  {'-' * 82}")
-    print(f"  [注意] 约合 USD 按 1 USD = {USD_TO_CNY} CNY 折算，仅用于跨 provider 横向比较")
-    print(f"  [注意] 各 provider 按原生币种记录（Anthropic/OpenAI=USD，DashScope/ModelScope=CNY），数值为估算")
+    print(f"  USD equivalents use 1 USD = {USD_TO_CNY} CNY for comparison.")
+    print("  [Note] Estimates use each provider's native currency.")
     print(f"{'=' * 86}\n")

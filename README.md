@@ -52,7 +52,7 @@ DEFAULT_MODEL=Qwen/Qwen3-235B-A22B
 
 Other providers: DeepSeek (¥5-10/novel), DashScope (¥4/M tokens), Claude ($15/M output), Ollama (free, local GPU).
 
-> **成本口径（重要）**：`src/utils/cost_calculator.py` 的单价表按各 provider 的**原生币种**记录——Anthropic / OpenAI / OpenRouter 为 **USD / 1M tokens**，DashScope（通义千问）/ ModelScope 为 **CNY**。币种映射见 `PROVIDER_CURRENCY`；`estimate.format(display_currency="CNY")` 可折算展示，`print_cost_comparison()` 会同时打印原生币种与 USD 近似值。折算汇率是 `USD_TO_CNY`（默认 7.2），**仅用于横向比较，不用于结算**；表内数值均为量级估算，实际以各 provider 官方价格页 / 账单为准。
+> Pricing in `src/utils/cost_calculator.py` uses each provider's native currency. Anthropic, OpenAI, and OpenRouter prices are in USD per million tokens. DashScope and ModelScope prices are in CNY. `estimate.format(display_currency="CNY")` converts the display currency, and `print_cost_comparison()` shows native prices and approximate USD equivalents. The `USD_TO_CNY` rate defaults to 7.2 for comparison. Actual charges depend on provider pricing and billing.
 
 ### 3. Launch
 
@@ -231,32 +231,27 @@ docker run -p 8000:8000 -v $(pwd)/.env:/app/.env:ro -v $(pwd)/workspace:/app/wor
 
 CI runs the full non-integration suite on Python 3.11/3.12/3.13 on every push and PR via GitHub Actions.
 
-## 记忆检索评测（可复现）
+## Memory retrieval evaluation
 
-RAG 记忆检索质量由 `eval/eval_rag_retrieval.py` 量化：
+The benchmark uses 42 story facts and 30 timeline events from `eval/fixtures/memory`.
 
 ```bash
-# 1. 安装 rag 依赖（chromadb + sentence-transformers）
 uv sync --extra rag
-
-# 2. 运行评测（数据使用仓库内 eval/fixtures/memory 的 42 条设定事实与 30 条时间线事件）
 uv run python eval/eval_rag_retrieval.py
 ```
 
-脚本走项目自身的 `NovelVectorStore + Embedder` 代码路径（BGE-small-zh 512 维）；每条记忆由本地 Ollama qwen3:8b 改写为自然中文检索问题后查询 top-k，统计 recall@k / MRR（Ollama 不可用时自动退化为原文查询，可用 `--bge-model` 指定本地模型路径）。
+The script indexes the fixtures with `NovelVectorStore` and `Embedder`. It uses local Ollama `qwen3:8b` to paraphrase each entry into an English search query. If Ollama is unavailable, it searches with the original entry. Pass `--bge-model` to select a different embedding model or a local model path.
 
-结果写入 `eval/rag_retrieval_results.json`（当前结果：42 条事实 recall@1=100%、30 条事件 recall@5=86.7%、MRR=0.78）。
+The checked-in `eval/rag_retrieval_results.json` records the original Chinese-language run: 100% recall@1 for facts, 86.7% recall@5 for events, and 0.78 event MRR. Running the script with the translated fixtures produces a new result.
 
-## 产品评审报告（两轮，可复现）
+## Product evaluation reports
 
-产品侧用自研的 AI 产品验收框架（5 大维度、19 条准则、每维 1–5 分、满分 25、阻断项一票否决）对本项目做了两轮**自动评审**（评审人是框架本身，不是人工评审），报告随仓库提供：
+The automated [AI Product Evaluation Framework](https://github.com/HuangLeijiana/ai-product-evaluation) assessed the project twice. It evaluates 19 criteria across five dimensions, with up to five points per dimension. A blocking issue can override the overall score.
 
-| 版本 | 得分 | 主要变化 |
+| Report | Score | Findings |
 |---|---|---|
-| `eval/evaluation_report.md`（v1.0） | **13.5 / 25** | 列出 3 项阻断：B1 无显式反馈入口 / B2 无 Bad Case 管理 / B3 无埋点方案 |
-| `eval/evaluation_report_v2.md`（v2.0） | **16.0 / 25（+2.5）** | B1、B2 已解决，B3 降级为条件；新增 **44 条边缘用例并全部通过**；30 章成本核算 **\$12.30 → \$7.04（-43%，Anthropic 价目，USD）** |
-
-评审框架本身（5 大维度 / 19 条准则 / 25 分制）开源在 [ai-product-evaluation](https://github.com/HuangLeijiana/ai-product-evaluation)。
+| [v1.0](eval/evaluation_report.md) | **13.5 / 25** | Three blockers: no explicit feedback, no process for reviewing failed outputs, and no plan for collecting implicit feedback. |
+| [v2.0](eval/evaluation_report_v2.md) | **16.0 / 25 (+2.5)** | The first two blockers were resolved, and implicit feedback collection became a condition for launch. All 44 new edge-case tests passed. The estimated Anthropic cost for 30 chapters fell from USD 12.30 to USD 7.04 (43%). |
 
 ## FAQ
 
@@ -269,8 +264,8 @@ A: All genres. The system works with any setting — xianxia, sci-fi, romance, u
 **Q: How much manual editing is needed?**
 A: The pipeline produces complete, coherent drafts. Most users do light editing (dialogue polish, pacing tweaks) rather than rewrites. The multi-pass review system catches most issues automatically.
 
-**Q: Does it support non-Chinese languages?**
-A: The pipeline is language-aware. Set `language` in your project config. Prompt templates are in Chinese but the system works with any language the underlying LLM supports.
+**Q: Can I write in other languages?**
+A: English is the default. Set `language` in your project config to request another language supported by your model.
 
 ## License
 

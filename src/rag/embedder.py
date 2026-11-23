@@ -1,4 +1,4 @@
-"""Embedding model wrapper — lazy-loads sentence-transformers for Chinese text."""
+"""Lazy-load sentence-transformers for story memory retrieval."""
 
 import logging
 
@@ -7,12 +7,13 @@ logger = logging.getLogger(__name__)
 # Default model: BGE-small Chinese, ~100MB, CPU-friendly, 512-dim
 DEFAULT_MODEL = "BAAI/bge-small-zh-v1.5"
 
-# BGE models use this instruction prefix for queries (not documents)
-BGE_QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
+# Keep the query instruction expected by the original Chinese embedding model.
+BGE_ZH_QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
+BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 
 
 class Embedder:
-    """Lazy-loading embedding model for Chinese novel text.
+    """Lazy-loading embedding model for novel text.
 
     The model is loaded on first use, not at import time. This means
     the module can be imported even without sentence-transformers installed —
@@ -21,6 +22,9 @@ class Embedder:
 
     def __init__(self, model_name: str | None = None):
         self._model_name = model_name or DEFAULT_MODEL
+        self._query_instruction = (
+            BGE_ZH_QUERY_INSTRUCTION if "-zh" in self._model_name.lower() else BGE_QUERY_INSTRUCTION
+        )
         self._model = None
 
     @property
@@ -64,7 +68,7 @@ class Embedder:
         differentiate them from documents in the embedding space.
         """
         result = self.model.encode(
-            [BGE_QUERY_INSTRUCTION + query],
+            [self._query_instruction + query],
             normalize_embeddings=True,
         )
         return result[0].tolist()
@@ -73,6 +77,6 @@ class Embedder:
         """Embed multiple search queries."""
         if not queries:
             return []
-        prefixed = [BGE_QUERY_INSTRUCTION + q for q in queries]
+        prefixed = [self._query_instruction + q for q in queries]
         embeddings = self.model.encode(prefixed, normalize_embeddings=True)
         return embeddings.tolist()

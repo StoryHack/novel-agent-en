@@ -1,357 +1,322 @@
-# AI产品验收评审报告
+# AI Product Acceptance Review Report
 
-## 基本信息
-- **产品/功能名称**：Novel Agent v0.1.0 — Multi-agent AI Novel Writing System
-- **评审日期**：2026-07-28
-- **评审阶段**：Alpha / 技术预览（非上线评审，适合采用快速评审+深度洞察模式）
-- **评审人**：AI产品评审框架
-- **北极星指标**：（团队未明确）合理推测应为：生成章节的人工采纳率、单章生成到可发布状态的平均迭代次数
-- **技术栈**：LangGraph + FastAPI + Anthropic/OpenAI/OpenRouter/Ollama 多Provider
-- **产品定位**：面向网文创作者/内容团队的AI辅助长篇小说写作系统，12个专业Agent协作完成从选题→世界观→大纲→逐章写作→审稿→润色的全流程
+## Basic Information
+- **Product/Function Name**: Novel Agent v0.1.0 – Multi-Agent AI Novel Writing System
+- **Review Date**: 2026-07-28
+- **Review Phase**: Alpha / Technical Preview (Not for final review; suitable for quick review and in-depth analysis)
+- **Reviewer**: AI Product Review Framework
+- **Key Metrics**: (Team hasn’t specified) It is reasonable to assume that the metrics would include the human acceptance rate of generated chapters, and the average number of iterations required to complete a chapter from its initial state until it’s ready for publication.
+- **Technical Stack**: LangGraph + FastAPI + Anthropic/OpenAI/OpenRouter/Ollama – Multiple Providers Used
+- **Product Purpose**: An AI-assisted system for web fiction authors/content teams to create novels. 12 professional agents work together to complete the entire process, from topic selection to final editing.
 
-### 评估数据来源
+### Evaluation of Data Sources
 
-| 来源 | 说明 |
-|------|------|
-| 源代码 | 完整阅读了 src/ 下全部核心模块 |
-| 项目配置 | pyproject.toml, .env.example, model_assignments.py |
-| Prompt模板 | writer/editor/reviewer 的 Jinja2 模板 |
-| 测试覆盖 | tests/ 目录（仅 `__init__.py`，实际测试用例为0） |
+| Source | Description |
+|--------|-------------|
+| Source Code | All core modules in the src/ directory have been thoroughly reviewed. |
+| Project Configuration | pyproject.toml, .env.example, model_assignments.py |
+| Prompt Templates | Jinja2 templates used in writer/editor/reviewer |
+| Test Coverage | The tests/ directory (only __init__.py is tested; actual test cases are 0) |
 
----
+## Review Summary
 
-## 评审总览
+| Dimension | Score (1-5) | Issues | Status |
+|----------|------------|--------|-------|
+| I. Core Intelligence Layer | 4.0 | None | Pass (Excellent) |
+| II. Experience and Interaction Layer | 2.5 | None | Needs improvement |
+| III. Data and Flywheel Layer | 1.5 | Yes | Blocked |
+| IV. Cost and Commercialization Layer | 3.0 | None | Needs improvement |
+| V. Security and Compliance Layer | 2.5 | None | Needs improvement |
 
-| 维度 | 得分(1-5) | 阻断项 | 状态 |
-|------|-----------|--------|------|
-| 一、核心智能层 | 4.0 | 无 | 通过（优秀） |
-| 二、体验与交互层 | 2.5 | 无 | 待改进 |
-| 三、数据与飞轮层 | 1.5 | 有 | 阻断 |
-| 四、成本与商业化层 | 3.0 | 无 | 待改进 |
-| 五、安全合规层 | 2.5 | 无 | 待改进 |
+**Overall Score**: 13.5 / 25
 
-**综合得分**：13.5 / 25
+**Overall Assessment**: ⚠️ The architecture is excellent. It can be directly entered into beta testing. However, three areas need improvement before considering large-scale deployment.
 
-**综合判定**：⚠️ 架构优秀，可直接进入内测——但需在数据飞轮层补齐3项短板后才能考虑规模化推广
+## Detailed Review
 
----
+### I. Core Intelligence Layer – Score: 4.0/5
 
-## 详细评审
+> This aspect is the biggest highlight of this product. The combination of 12 agents, LangGraph orchestration, and multi-layer quality control mechanisms makes this product one of the best in the AI category.
 
-### 一、核心智能层 — 得分：4.0/5
+#### Key Findings
 
-> 这个维度是该产品最大的亮点。12 Agent + LangGraph编排 + 多层质量门禁的设计，在AI产品中属于第一梯队。
+**1. Excellent design of the multi-Agent architecture (Criterion 5: Dynamic Routing)**
+Each Agent has its own model assignment mechanism (`model_assignments.py`). Different strategies are implemented:
+- For creative/ high-quality Agents (Writer, Architect, PlotPlanner), the routing is done using Claude Sonnet with a temperature range of 0.7–0.9.
+- For analytical/reviewer tasks (Editor, ContinuityChecker), the routing is done using Claude Haiku/Sonnet with a temperature of 0.3.
+- For basic checking tasks (ContinuityChecker, ReaderSimulator), the routing is done using Claude Haiku, which is a low-cost model.
 
-#### 关键发现
+This is essentially a “dynamic routing based on task complexity” approach. Creative tasks use high-capacity models, while checking tasks use low-cost models. There’s also an automatic switch between the primary and fallback models, which aligns with the framework’s principles.
 
-**1. 多Agent架构设计出色（准则5：动态路由）**
+**2. Systematic design for hallucination prevention and quality control (Criteria 1, 3)**
+The product has designed three layers of protection against the most common risks in AI writing: “AI-like behavior,” “logical inconsistencies,” and “broken logic.”
 
-每个Agent有独立的模型分配（`model_assignments.py`），且实现了差异化策略：
-- 创意/高质量Agent（Writer, Architect, PlotPlanner）→ Claude Sonnet，temperature 0.7-0.9
-- 分析/审稿Agent（Editor, ContinuityChecker）→ Claude Haiku/Sonnet，temperature 0.3
-- 基础检查Agent（ContinuityChecker, ReaderSimulator）→ Claude Haiku，低成本模型
+| Layer | Mechanism | Cost | Role |
+|-------|-----------|-------|-------|
+| Layer 0 | `ChapterInspector` – structural checks (word count/ratio, paragraph density, hooks, AI markers) | Zero LLM cost | Blocks unacceptable outputs |
+| Layer 1 | Editor + ContinuityChecker + ReaderSimulator – parallel review | Moderate LLM cost | Multi-dimensional quality assessment |
+| Layer 2 | `ReviewerAgent` – adversarial review (independent agent with fresh context) | Additional LLM cost | Identifies blind spots in writers/editors |
 
-这本质上是一种 **"按任务难度动态路由"** 的实现——创意任务用高能力模型，检查任务用低成本模型。同时有 primary→fallback 自动故障切换，架构思路上符合框架准则。
+This design reflects a deep understanding of AI’s limitations, such as context blindness and self-review weaknesses. The adversarial review mechanism in Layer 2 is particularly effective. It simulates the role of an independent reviewer, allowing for the identification of blind spots in the original writer.
 
-**2. 幻觉/质量控制的系统性设计（准则1、准则3）**
+**3. Long-term memory management (Criterion 4)**
+`MemoryManager` keeps track of short-term memories (summary of previous chapters, unresolved hooks, active plot points) as well as long-term memories (list of chapter summaries, timeline events, role state changes). The design of `max_context_chapters=5` and `max_context_facts=20` is reasonable. This is a proper definition of “cross-chapter memory.”
 
-该产品对AI写作中最核心的风险——"AI味"、"前后矛盾"、"逻辑断裂"——设计了三层防线：
+**4. Areas that need improvement**
+- **No confidence levels in output results (Criterion 2):** Quality reviews are binary (pass/fail, threshold 6.5). However, there’s no detailed confidence level information. If a score of 6.4 or 8.9 is given as “pass,” then the information is lost. It’s recommended to provide confidence levels for each dimension.
+**No L1-L5 hallucination grading:** The adversarial review can detect plot_holes and character inconsistencies, but there is no systematic definition of hallucination levels. It is recommended that L1 represents errors in character names/relationships (must be 0), L2 represents errors in timeline data, and L3 represents logical jumps in motivations, etc.
+**Missing edge scenario testing:** The `tests/` directory is basically empty. It’s a high-risk signal when a generative AI product doesn’t have a regression test set.
 
-| 层级 | 机制 | 成本 | 定位 |
-|------|------|------|------|
-| Layer 0 | `ChapterInspector` 结构性检查（字数/对话比/段落密度/钩子/AI标记） | 零LLM成本 | 拦截明显不合格输出 |
-| Layer 1 | Editor + ContinuityChecker + ReaderSimulator 并行审查 | 中等LLM成本 | 多维度质量评估 |
-| Layer 2 | `ReviewerAgent` 对抗性审稿（独立Agent，fresh context） | 额外LLM成本 | 发现writer/editor盲区 |
+#### Blocking items: None
 
-这个设计体现了对AI能力边界（context blindness、self-review weakness）的深刻理解。对抗性审稿（Layer 2）尤其值得肯定——它模拟了"独立审稿人"角色，能发现原writer的盲区。
+#### Improvement suggestions (sorted by priority)
 
-**3. 长程记忆管理（准则4）**
+1. 🔴 Urgent: Create a test set for edge-case scenarios. This should cover at least the following scenarios: empty inputs, characters with the same name, multi-line narratives, extremely long chapters, and pure dialogue-based chapters.
+2. 🟡 Important: Introduce a dimensional level of confidence for quality review outputs. Instead of just a single pass/fail, chapters with low confidence should automatically trigger manual review.
+3. 🟡 Important: Define hallucination severity levels L1-L5 for online writing scenarios. It’s important to ensure that there are no errors at level L1 (character names, relationships, key events).
+4. 🟢 Optimization: Consider adding more detection criteria to ChapterInspector. For example, detect flat emotional curves in dialogues, and ensure balanced distribution of dialogue elements within chapters.
 
-`MemoryManager` 维护了短期记忆（上一章摘要、未解决钩子、活跃伏笔）和长期记忆（章节摘要列表、时间线事件、角色状态变更）。`max_context_chapters=5` 和 `max_context_facts=20` 的检索窗口设计合理。这是"跨章节记忆"的正确定义。
+### II. Experience and Interaction Layer – Score: 2.5/5
+The product is currently targeted at developers and technical users. The interaction layer relies primarily on APIs. As a tool for creators, it still has a significant gap from the “AI Native Interaction Paradigm”.
 
-**4. 需要关注的差距**
+#### Key Findings
 
-- **无置信度输出（准则2）**：质量审查结果是二元pass/fail（阈值6.5），但没有细粒度的置信度标识。如果评分是6.4和8.9都显示"pass"，信息损失太大。建议输出每个维度的置信度区间。
-- **无L1-L5幻觉分级**：对抗性审稿能发现plot_holes和character_inconsistencies，但没有系统化的幻觉等级定义。建议：L1=角色名称/关系事实性错误（必须为0），L2=时间线数据错误，L3=动机逻辑跳跃等。
-- **边缘场景测试缺失**：`tests/` 目录基本为空。一个生成式AI产品没有回归测试集是高风险信号。
+**1. Human-in-the-loop design is integrated into the workflow (Criterion 7, Criterion 10)**
+The `human_confirmation` node is a formal part of the LangGraph workflow. It supports four types of decisions:
+- **accept** → Accept the chapter and proceed.
+- **revise** → Return to the `polish` phase, with feedback provided.
+- **rewrite** → Return to the `writing` phase, with feedback provided.
+- **rollback** → Return to the `planning` phase, where the plan is re-evaluated.
 
-#### 阻断项：无
+This is a correct architectural design. The human element isn’t outside the loop; it’s part of the loop itself.
 
-#### 改进建议（按优先级排序）
+**2. Lack of creator-friendly UX (Criterion 6, Criterion 8)**
+- **No gradual disclosure**: The chapter review report lists all issues at once. Creators might prefer to first see a “general evaluation of 3 sentences”, then a list of specific issues, and finally detailed comments for each issue.
+- **No options for fixing errors**: When a chapter fails to meet the requirements, the system returns a list of issues for the writer to fix. However, there are no options for fixing errors in a more granular manner, such as applying suggestions, fixing character errors, or changing the writing style.
+- **WebSocket is available but not utilized effectively**: WebSocket is only used for basic status updates. There’s no effective way to display the generated chapters in a stream-based manner, which is crucial for a good creator experience.
 
-1. 🔴 紧急：建立边缘场景测试集（至少覆盖：空输入、角色重名、多线叙事交叉、极端长度章节、纯对话章节）
-2. 🟡 重要：为质量审查输出引入维度级置信度（而非单一pass/fail），低置信度章节自动触发人工审核
-3. 🟡 重要：定义针对网文写作场景的L1-L5幻觉等级，优先确保L1（角色名、关系、关键事件）零错误
-4. 🟢 优化：考虑为ChapterInspector添加更多检测项（如：情感曲线平坦检测、对话分配不均检测）
+**3. Cold start issues (Criterion 12)**
+As v0.1.0, there’s no example library available. New users have no idea what to write when they see the prompt “Enter your creative inspiration”. This makes it difficult for creators to get started.
 
----
+**4. Reasonable API design**: The RESTful routing is clear. The model of creating, reading, updating, and deleting projects, along with managing chapters and accessing artifacts, works as expected.
 
-### 二、体验与交互层 — 得分：2.5/5
+#### Blocking items: None
 
-> 产品目前面向开发者/技术用户，交互层以API为主。作为创作者工具，离"AI Native交互范式"还有明显距离。
+#### Improvement suggestions (sorted by priority)
 
-#### 关键发现
+1. 🔴 Urgent: Create a “creative inspiration library” that covers at least 5 popular types of web stories. Each type should include a complete inspiration template for users to use as a reference.
+2. 🔴 Urgent: Implement streaming output for chapter generation using WebSocket push tokens. This would allow creators to see the progress of AI-generated content.
+3. 🟡 Important: Design a “progressive disclosure” system for design review reports. This would involve providing overall evaluations, dimension-based scores, specific issues, and detailed comments for each section.
+4. 🟡 Important: Provide detailed options for error recovery. For example, fixing only character names, adjusting certain dialogues, or rewriting sections in a different style.
+5. 🟢 Optimization: The web interface currently only has an API; there’s no graphical user interface.
 
-**1. Human-in-the-loop设计已嵌入工作流（准则7、准则10）**
+### III. Data and Flywheel Layer – Score: 1.5/5
+This is the weakest aspect among the five dimensions. The product architecture is excellent, but it lacks the “better with use” characteristic that makes a product truly sustainable. This represents a dividing line between “one-time projects” and “sustainable products”.
 
-`human_confirmation` 节点是LangGraph工作流的正式环节，支持四种决策：
-- accept → 接受本章，继续
-- revise → 返回polish阶段，带反馈
-- rewrite → 返回writing阶段，带反馈
-- rollback → 返回planning阶段，重规划
+#### Key Findings
 
-这是正确的架构设计——Human不在loop外面，而是loop的一部分。
+**1. Data collection infrastructure exists, but it’s incomplete (Criterion 10)**
 
-**2. 创作者UX的缺失（准则6、准则8）**
+What’s available:
+- `AgentLogEntry`: Records summaries of each Agent’s actions.
+- `ModelScheduler._usage_stats`: Information about call counts, token consumption, costs, and error rates per agent.
+- DimensionScores from chapter reviews: Allows tracking of scores for each chapter over time.
 
-- **无渐进式披露**：章节审查报告一次性给出所有issues。创作者可能希望先看到"总体评价（3句话）"，再展开"具体问题列表"，最后钻取"逐段批注"。
-- **无"马杀鸡"错误恢复**：当章节审稿不通过时，系统返回issues列表让writer重写。但没有提供"一键应用建议"、"仅修复角色错误"、"换个写法风格"等细粒度恢复选项。
-- **WebSocket有但未充分利用**：WebSocket只用于基础状态推送，没有实现章节生成的流式展示（对创作者体验至关重要）。
+What’s missing:
+- **Implicit feedback metrics are zero**: No records of user engagement time, acceptance/rejection rates, or frequency of re-genarations after modifications.
+- **Explicit feedback metrics are zero**: There are four buttons for “human confirmation”, but no 👍/👎 ratings or reasons for those decisions.
+- **Mechanisms for managing bad cases are absent**: No automatic aggregation of low-scoring chapters, no weekly highlights, and no pipeline from bad cases to model refinements.
 
-**3. 冷启动问题（准则12）**
+**2. The data-driven process isn’t even started (Criterion 11)**
 
-作为v0.1.0，没有示例库(Playbook)。新用户面对"输入你的创作灵感"这一句话的界面，完全不知道该写什么。这对于降低创作者门槛是致命的。
+The crucial question is: “How much will the model’s F1 score improve after 3 months of user feedback?”
 
-**4. API设计合理**：RESTful路由清晰，project CRUD + chapter操作 + artifact访问的模式符合预期。
+Currently, this question cannot be answered. The system lacks:
+- A mechanism for labeling data.
+- Mechanisms for model distillation/refinement.
+- An online verification framework.
+- The ability to conduct A/B tests.
+- A unified monitoring dashboard.
 
-#### 阻断项：无
+**3. Usage statistics are available, but they’re incomplete**
 
-#### 改进建议（按优先级排序）
+`ModelScheduler.get_usage_stats()` provides basic data, but it lacks:
+- P50/P95 latency statistics.
+- Token consumption trends per chapter (this can help identify issues like “the more chapters are written, the more expensive it becomes”).
+- Rates of revisions by writers (the success rate of one draft vs. average number of revisions).
 
-1. 🔴 紧急：构建"创作灵感示例库"，覆盖至少5种热门网文类型（战神归来/系统穿越/重生逆袭/悬疑灵异/都市神医），每个类型提供完整的灵感描述模板供用户"抄作业"
-2. 🔴 紧急：实现章节生成的流式输出（WebSocket推送token），让创作者看到AI"正在写"的状态
-3. 🟡 重要：设计审查报告的"渐进式披露"：总体评价→维度评分→具体问题→逐段批注
-4. 🟡 重要：提供细粒度错误恢复选项："仅修复角色名"、"调整这一段对话"、"换个风格重写"
-5. 🟢 优化：Web界面（当前只有API，无GUI）
+#### Blocking Items
 
----
+| # | Blocking Items | Red Line Criteria | Current Status |
+|---|-------------|---------------|-------------|
+| B1 | No explicit feedback mechanism | Block if there’s no explicit feedback mechanism | Not implemented |
+| B2 | No failed-output management mechanism | Block if there’s no failed-output management mechanism | Not implemented |
+| B3 | No buried point scheme (implicit feedback) | Block if the buried point coverage is < 100% | Not implemented |
 
-### 三、数据与飞轮层 — 得分：1.5/5
+#### Improvement suggestions (sorted by priority)
 
-> 这是五个维度中最薄弱的环节。产品架构优秀，但缺少"越用越聪明"的基因。这是"一次性项目"和"可持续产品"的分水岭。
+1. 🔴 Urgent: Add 👍/👎 tags along with reasons for feedback in human_confirmation. This is the first step in the data-driven approach.
+2. 🔴 Urgent: Develop a system for implicit feedback tracking. At least record the number of times and content of user modifications, as well as changes in satisfaction after revisions, and the proportion of cases where the feedback was directly accepted.
+3. 🔴 Urgent: Implement a mechanism for generating weekly reports on bad cases. Automatically aggregate low-score chapters (<6.5) and chapters with high modification rates, so that the team can analyze them.
+4. 🟡 Important: Develop an automated process of “annotation → fine-tuning → verification”. Provide a prediction of F1 improvement in 3 months.
+5. 🟡 Important: Create a unified monitoring panel (e.g., Grafana). This panel should provide information on usage/ costs/delay of each agent, trends in the quality of each chapter, and trends in user adoption rates.
 
-#### 关键发现
+### IV. Cost and Commercialization – Score: 3.0/5
 
-**1. 数据采集基础设施存在但不完整（准则10）**
+> There is awareness of costs at the architectural level. However, there is a lack of a quantifiable cost budget and a clear understanding of commercial aspects.
 
-已有：
-- `AgentLogEntry`：记录每个Agent的操作摘要
-- `ModelScheduler._usage_stats`：per-agent的调用次数、token消耗、成本、错误率
-- 章节审查的dimension_scores：可追踪每章的各维度得分趋势
+#### Key Findings
 
-缺失：
-- **隐式反馈埋点为零**：没有记录用户停留时长、采纳/拒绝率、修改后重新生成的频率
-- **显式反馈入口为零**：`human_confirmation` 有四个按钮但没有 👍/👎 + 原因标签
-- **Bad Case管理机制为零**：没有自动聚合低分章节、没有每周精选集、没有从Bad Case到模型微调的流水线
+**1. Cost awareness is reflected at the architectural level (Criterion 5, Criterion 13)**
 
-**2. 数据飞轮完全未启动（准则11）**
+Designed well:
+- ChapterInspector is used to check the structure of zero LLM-based solutions. This prevents unnecessary token waste by catching obvious errors early on.
+- ContinuityChecker and ReaderSimulator use Claude Haiku, which is a low-cost model. Not all agents use Sonnet.
+- The Primary/Fallback model mechanism provides room for cost optimization.
+- Tracking of per-agent costs is done using `_usage_stats`.
 
-灵魂拷问：**"上线3个月后，基于用户反馈，模型的F1值预计提升多少？"**
+**2. No quantitative cost budget available (Criterion 13)**
 
-当前无法回答这个问题。系统没有：
-- 标注流水线
-- 模型蒸馏/微调机制
-- 在线验证框架
-- A/B测试能力
-- 统一的监控面板
+The framework’s rule “block any proposal without a cost budget” applies during the launch phase. Currently, the Alpha phase can be delayed, but we need to answer the following questions:
+- What is the estimated total token consumption and cost for writing a 100,000-word manuscript, consisting of 30 chapters?
+- What are the cost differences between different model combinations (all Sonnet vs Sonnet+Haiku)?
+- What is the cost per chapter? (Initial writing vs revising vs rewriting)
 
-**3. 使用统计虽有但不完整**
+**3. Token waste exists, but it’s manageable (Criterion 14)**
 
-`ModelScheduler.get_usage_stats()` 提供了基础数据，但缺少：
-- P50/P95延迟统计
-- per-chapter的token消耗趋势（能发现"章节越写越贵"的问题）
-- writer的修改率（一稿通过率 vs 平均revise次数）
+- The System Prompt is managed using Jinja2 templates, which is a good approach.
+- However, `build_context_block` (base.py:200) always creates a complete context block for the world/bible/characters/outline/memory. As the novel grows in length, this context block becomes larger. There’s no mechanism for dynamic compression or selective loading.
+- The `max_context_chapters=5` limit ensures that the number of chapters is controlled. This is a good approach. But there’s no similar pagination mechanism for data like bible and characters.
 
-#### 阻断项
+**4. No commercial metrics available (Criterion 15)**
 
-| # | 阻断项 | 红线标准 | 当前状态 |
-|---|--------|---------|---------|
-| B1 | 无显式反馈入口 | 无显式反馈入口则阻断 | 未实现 |
-| B2 | 无Bad Case管理机制 | 无Bad Case管理机制则阻断 | 未实现 |
-| B3 | 无埋点方案（隐式反馈） | 埋点覆盖率 < 100% 阻断 | 未实现 |
+This is a creator tool. The likely commercial model would be SaaS subscription. But currently, no commercial metrics are available. It’s unclear what metrics should be measured for this product.
 
-#### 改进建议（按优先级排序）
+Recommended metrics:
+- Creator’s acceptance rate (accept / total chapters)
+- Average number of revisions (the lower, the better)
+- Time from project initiation to completion (vs manual writing)
+- NPS (likelihood of recommendation by creators)
 
-1. 🔴 紧急：在human_confirmation中加入 👍/👎 + 原因标签（不符合预期/角色写崩了/情节无聊/AI味太重/其他），这是数据飞轮的第一步
-2. 🔴 紧急：设计隐式反馈埋点方案——至少记录：用户修改反馈的次数和内容、revise后满意度变化、直接accept的比例
-3. 🔴 紧急：建立Bad Case周报机制——自动聚合低分章节（<6.5）、高修改率章节，供团队分析
-4. 🟡 重要：建立"标注→微调→验证"的自动化流水线规划，给出3个月后的F1提升预期
-5. 🟡 重要：建立统一监控面板（Grafana或类似），聚合：各Agent使用量/成本/延迟、各章节质量分趋势、用户采纳率趋势
+#### Blocking items: None (Can be postponed during the Alpha phase)
 
----
+#### Improvement suggestions (sorted by priority)
 
-### 四、成本与商业化层 — 得分：3.0/5
+1. 🔴 Urgent: Provide a cost estimate for a single writing task. Determine the total cost of writing 30 chapters using different models.
+2. 🟡 Important: Implement caching for frequently used System Prompt segments (e.g., basic information about the world setting). This prevents the need to send the same information for each chapter.
+3. 🟡 Important: Define the product’s key metrics (suggested: chapter adoption rate) and establish corresponding attribution links.
+4. 🟢 Optimization: When the amount of content in the “bible” exceeds a certain threshold, implement loading based on needs. This way, the writer only needs to access the relevant information from the current chapter, rather than all the information in the chapter.
 
-> 成本意识在架构层面有所体现，但缺少量化的成本预算和商业归因。
+### V. Security, compliance, and interpretability – Score: 2.5/5
 
-#### 关键发现
+As a B2C creator’s tool, the focus of security and compliance isn’t on PII (personal information). Instead, it’s about content security, interpretability of outputs, and management of model versions.
 
-**1. 成本意识体现在架构层面（准则5、准则13）**
+#### Key Findings
 
-值得肯定的设计：
-- ChapterInspector（零LLM成本的结构检查）放在昂贵的LLM审稿之前——先拦截明显不合格输出，避免浪费token
-- ContinuityChecker和ReaderSimulator使用Claude Haiku（低成本模型），而非所有Agent都用Sonnet
-- Primary/Fallback模型机制提供了成本优化的空间
-- Per-agent cost tracking（`_usage_stats`）
+**1. Lack of content security measures (Guideline 16)**
+This product is designed for online writing. The content-related risks include:
+- Pornography or borderline content
+- Excessive violence or bloodshed
+- Political-sensitive content
 
-**2. 缺少量化的成本预算（准则13）**
+The current system lacks any mechanism for detecting inappropriate content during input/output processes. The Writer Agent directly receives user-generated ideas and generates chapters without any security filtering.
 
-框架红线"无成本预算表则阻断"适用于上线评审。当前Alpha阶段可以延后，但需要回答：
-- 写一本10万字的网文（约30章），总token消耗和成本预估是多少？
-- 不同模型组合（全Sonnet vs Sonnet+Haiku混合）的成本差异？
-- 单章的成本区间？（初次写作 vs revise vs rewrite）
+While the content security boundaries for this tool are broader than those of customer-service or educational products, having no detection mechanism is a risk. The content review standards used by platforms like StartPoint and Tomato must be taken into consideration.
 
-**3. Token浪费问题存在但可控（准则14）**
+**2. Interpretability and auditing (Guideline 17)**
+Currently, there are:
+- `AgentLogEntry` to record actions taken by each Agent
+- `LLMResponse` to record model/provider/token/ costs
+- `dimension_scores` to provide quality metrics for chapter reviews
 
-- System Prompt通过Jinja2模板管理，结构良好
-- 但`build_context_block`（base.py:200）每次都构建完整的world/bible/characters/outline/memory上下文块。随着小说变长，这个上下文块会越来越大——没有看到动态压缩或选择性加载机制。
-- `max_context_chapters=5` 限制了近期章节数量，这是好的。但bible和character数据没有类似的分页机制。
+However, there is a lack of:
+- **Prompt version management**: Jinja2 templates are stored in the code repository, but there’s no mechanism for version tracking or rollback. If changes to the writer’s prompts lead to poor output quality, it’s difficult to determine which prompt caused the issue.
+- **Model version staging**: No staging strategy exists. Any changes to the model by the Agent take effect immediately.
+- **One-click rollback**: This feature isn’t implemented yet. But as v0.1.0, this requirement can be postponed.
 
-**4. 商业归因缺失（准则15）**
+**3. Bias testing (Guideline 18)**
+The concept of “bias” in online writing scenarios differs from traditional AI products. It’s important to consider:
+- Gender stereotypes in character roles (e.g., female characters always acting as tools)
+- Regional or occupational stereotypes
+- Value simplification (all “villains” follow the same pattern)
 
-这是一个创作者工具，可能的商业模型是SaaS订阅。但当前没有绑定任何商业指标——不知道这个产品要衡量什么。
+No such testing has been conducted yet. This is a reasonable requirement for v0.1.0, but it needs to be included in the roadmap.
 
-合理的北极星指标建议：
-- 创作者的章节采纳率（accept / total chapters）
-- 平均revise次数（越低越好）
-- 从立项到完本的时间（vs 纯人工写作）
-- NPS（创作者推荐意愿）
+**4. Exit mechanism (Guideline 19, additional)**
+If the AI becomes completely uncontrollable, the system can have two options:
+- Stop the Agent’s workflow and revert to manual writing. This is a natural way to downgrade the system.
+- There’s no option to downgrade the system with AI assistance. For example, “Turn off AI-generated content, but keep AI-assisted review.”
 
-#### 阻断项：无（Alpha阶段可延后）
+For this tool, “exit” means exporting all written content as Markdown, allowing manual continuation of writing. This path is already implemented in BibleMarkdownStore, so the risk is manageable.
 
-#### 改进建议（按优先级排序）
+#### Blocking items: None (Alpha phase)
 
-1. 🔴 紧急：给出单次写作任务的成本预算表——写30章网文、不同模型组合的总成本区间
-2. 🟡 重要：为高频System Prompt片段（如world-setting基础信息）实现缓存，避免每章重复发送
-3. 🟡 重要：定义产品北极星指标（建议：章节采纳率）和对应的归因链路
-4. 🟢 优化：当bible内容超过一定阈值时，实现按需加载（writer只需当前相关章节的世界观信息，而非全部）
+#### Improvement suggestions (sorted by priority)
 
----
+1. 🔴 Urgent: Implement version management for the Prompt template. Record every modification and provide information about the reasons for those changes. It’s also important to have access to historical versions.
+2. 🟡 Important: Add basic content safety checks during the Writer output process. This should include checking for explicit pornographic/violent keywords. The standards should be aligned with those of target platforms such as Qidian, Fanqie, and Feilu.
+3. 🟡 Important: Establish a minimal graying mechanism for model switching. New writer prompts should be tested first on Chapter 5. After comparing the quality, they can be fully implemented.
+4. 🟢 Optimization: Add checks for role bias in the system. For example, check the proportion of female characters in dialogues, and ensure that there is diversity among villain characters. These checks should be included in the monthly quality audits.
 
-### 五、安全、合规与可解释性 — 得分：2.5/5
+## Strategic Review Questions
 
-> 作为B2C创作者工具，安全合规的重点不是PII（个人隐私），而是内容安全、输出可解释性和模型版本管理。
+> “When the accuracy of AI improves from 90% to 95%, it requires 10 million units of computing power. When it improves to 96%, it requires another 20 million units of computing power. What would you choose?”
 
-#### 关键发现
+**Translation for this product:**
 
-**1. 内容安全围栏缺失（准则16）**
+> “When switching from using only Sonnet to a combination of Sonnet and Haiku, the chapter adoption rate drops from 78% to 72%. However, the cost is reduced by 60%. Would you invest the saved money in improving the experience for those 6% of chapters that are not adopted? Or would you use that money to improve the experience for those 28% of chapters that are rejected?”
 
-该产品面向网文创作，内容安全红线包括：
-- 色情/擦边内容
-- 暴力/血腥过度描写
-- 政治敏感内容
+**Reviewers’ conclusions:**
+- ✅ The team has a clear understanding of investment returns. The cost structure is well-defined: ChapterInspector provides zero-cost pre-checks, while Haiku handles reviews at low costs.
+- ✅ The team can clearly define a “ceiling point” for their efforts. The Primary/Fallback model helps them understand that it’s sufficient to achieve just enough results.
+- ⚠️ However, there’s a risk of “agent stacking”. With 12 agents currently in use, each additional agent introduces new delays and costs. It’s recommended to set a limit on the number of agents used.
 
-当前系统没有输入/输出内容检测机制。Writer Agent直接接受用户灵感并生成章节，没有任何安全过滤。
+**Suggested ceiling point:** Stop adding more agents or changing the prompts when the chapter adoption rate reaches 85%. Instead, focus on improving the experience for users who are not satisfied with their chapters. This will minimize the cost associated with modifying those chapters.
 
-虽然创作者工具的内容安全边界比客服/教育类产品宽，但完全零检测是一个风险点。平台方（如起点、番茄）的内容审核标准是必须考虑的。
+## Final Judgment
 
-**2. 可解释性和审计（准则17）**
+### ✅ Strong architecture, suitable for a closed beta
+### ⚠️ Conditional List
 
-已有：
-- `AgentLogEntry` 记录每个Agent的操作
-- `LLMResponse` 记录模型/provider/token/成本
-- 章节审查的dimension_scores提供质量归因
+**Conditions to be met before beta testing begins (3 items):**
+1. **Create explicit feedback mechanisms**: Add 👍/👎 ratings along with reasons in human_confirmation.
+2. **Implement prompt version management**: Record changes and reasons for each prompt.
+3. **Create a test set for edge cases**: Cover at least 6 types of abnormal inputs.
 
-但缺失：
-- **Prompt版本管理**：Jinja2模板在代码仓库中，但没有版本追踪和回滚机制。如果修改了writer的prompt导致输出质量下降，无法快速定位是哪个prompt改动导致的。
-- **模型版本灰度发布**：没有灰度策略。所有Agent修改模型后直接全量生效。
-- **一键回滚**：没有实现。（但作为v0.1.0，这个要求可以延后）
+**Tasks to be completed within 4 weeks after beta testing begins (4 items):**
+1. **failed-output reporting mechanism**: Automatically aggregate low-score chapters.
+2. **Cost budget sheet**: Specify costs for different model combinations.
+3. **Content security detection**: Add keyword filtering during the Writer’s output process.
+4. **Implicit feedback tracking solution**: Design document and implementation plan for user behavior data collection.
 
-**3. 偏见测试（准则18）**
+**Tasks to be completed within 8 weeks after beta testing begins (3 items):**
+1. **Automated data processing pipeline**: Complete the design from annotation to fine-tuning and verification.
+2. **Unified monitoring dashboard**: Real-time dashboard for agent usage, costs, quality scores, and adoption rates.
+3. **Definition and attribution of key metrics**
 
-网文场景下的"偏见"含义不同于传统AI产品。需要关注的：
-- 角色性别刻板印象（如女性角色总是工具人）
-- 地域/职业刻板印象
-- 价值观单一化（所有"反派"都是同一模式）
+## Key features that deserve to be preserved and promoted
 
-当前没有相关测试。对v0.1.0是合理的，但需要纳入路线图。
+1. **Three-stage quality review**: Structural inspection → Multi-Agent parallel review → Adversarial review. This is a rare defense in depth approach in AI products.
+2. **Model-based allocation of agents based on complexity**: Use Sonnet for creation purposes, and Haiku for inspection purposes. This is a smart way of managing costs.
+3. **Human-in-the-loop integration into workflows**, rather than relying on post-event remedies. This ensures architectural correctness.
+4. **Bible Markdown export capability** – This provides natural protection against vendor lock-in.
 
-**4. 退出机制（准则19 附加）**
+## Appendix: Records of the review process
 
-如果AI完全失控，系统的降级路径：
-- 可以停止Agent工作流 → 回到纯人工写作（天然降级）
-- 但没有AI辅助模式下的降级选项（如"关闭AI自动生成，仅保留AI审稿"）
+### Code Reading Coverage
+- Core modules: agent (12 agents in total), graph (workflow + nodes + edges), llm (client + providers + scheduler), api (routes + websocket), config (settings + model_assignments), models (all data models), storage
+- Prompt templates: writer (generate_chapter, extract_facts), editor (review_chapter, check_consistency, detect_ai_flavor), reviewer (adversarial_review)
+- Configuration files: pyproject.toml, .env.example, settings.py
+- Test directory: tests/ (only `__init__.py`)
 
-对创作者工具来说，"退出"= 导出所有已写内容为Markdown → 人工继续。这个路径天然存在（BibleMarkdownStore已实现Markdown导出），所以风险可控。
+### Test Case Coverage
+- **Normal scenarios**: The rationality of the architectural design can be inferred through code analysis. ✓
+- **Edge cases**: `tests/` is empty – meaning the test coverage is 0. ❌
+- **Adversarial samples**: There are adversarial review agents, but no adversarial test cases. ❌
+- **Multi-turn conversations**: LangGraph checkpoints are supported, but no related tests exist. ❌
 
-#### 阻断项：无（Alpha阶段）
-
-#### 改进建议（按优先级排序）
-
-1. 🔴 紧急：实现Prompt模板的版本管理——每次修改记录diff和改动原因，支持查看历史版本
-2. 🟡 重要：在Writer输出阶段加入基础内容安全检测（至少检测明确违规的色情/暴力关键词），与目标平台（起点/番茄/飞卢）的内容审核标准对齐
-3. 🟡 重要：为模型切换建立最简灰度机制——新的writer prompt先在5章上试跑，对比质量分后再全量切换
-4. 🟢 优化：建立角色偏见检查项（如：女性角色对话占比、反派角色多样性等），纳入月度质量审计
-
----
-
-## 灵魂拷问
-
-> "当AI的准确率从90%提升到95%需要花1000万算力，而提升到96%需要再花2000万时，你会怎么选？"
-
-**对应到此产品的翻译**：
-
-> "当从全Sonnet切换到Sonnet+Haiku混合方案后，章节采纳率从78%降到72%，但成本降低了60%。你会把省下来的钱全投回去换那6%的采纳率，还是把这笔钱花在优化'那28%被拒绝的章节'的修改体验上？"
-
-**评审人判断**：
-- ✅ 团队有清晰的投资回报边界意识——架构层面已体现了成本分层（ChapterInspector零成本前置检查、Haiku做低成本review）
-- ✅ 团队能清晰说明"停火点"——Primary/Fallback模型机制说明团队理解"够用就好"
-- ⚠️ 但需要警惕"Agent堆叠"倾向——当前12个Agent，每个新增Agent都带来新的延迟和成本。建议设定Agent数量上限
-
-**建议的停火点**：当章节采纳率（accept rate）达到85%时，停止堆Agent/改prompt，转而优化修改体验（让用户修改不满意章节的成本降到最低）。
-
----
-
-## 最终裁决
-
-### ✅ 架构优秀，直接进入内测
-### ⚠️ 附条件清单
-
-**条件清单**：
-
-上线内测前必须完成（3项）：
-1. **建立显式反馈入口**：human_confirmation中加入 👍/👎 + 原因标签
-2. **建立Prompt版本管理**：每次prompt修改记录diff和原因
-3. **建立边缘场景测试集**：至少覆盖6类异常输入
-
-内测后4周内必须完成（4项）：
-1. **Bad Case周报机制**：自动聚合低分章节
-2. **成本预算表**：不同模型组合的单书成本区间
-3. **内容安全基础检测**：Writer输出阶段加入关键词过滤
-4. **隐式反馈埋点方案**：用户行为数据采集的设计文档和实施计划
-
-内测后8周内必须完成（3项）：
-1. **数据飞轮自动化流水线方案**：标注→微调→验证的完整设计
-2. **统一监控面板**：Agent使用量/成本/质量分/采纳率的实时看板
-3. **北极星指标定义和归因方案**
-
----
-
-## 产品亮点（值得保留和推广的设计）
-
-1. **三层质量门禁**（结构检查→多Agent并行审查→对抗性审稿）——这是AI产品中罕见的"纵深防御"思维
-2. **按Agent难度分配模型**（创作用Sonnet，检查用Haiku）——成本意识的正确姿势
-3. **Human-in-the-loop嵌入工作流**而非事后补救——架构正确性
-4. **Bible Markdown导出**——天然的vendor-lock-in防护
-
----
-
-## 附录：评审过程记录
-
-### 代码阅读覆盖
-- 核心模块：agent（12个Agent全部）、graph（workflow + nodes + edges）、llm（client + providers + scheduler）、api（routes + websocket）、config（settings + model_assignments）、models（全部数据模型）、storage
-- Prompt模板：writer（generate_chapter, extract_facts）、editor（review_chapter, check_consistency, detect_ai_flavor）、reviewer（adversarial_review）
-- 配置文件：pyproject.toml, .env.example, settings.py
-- 测试目录：tests/（仅 `__init__.py`）
-
-### 测试用例覆盖
-- 正常场景：通过代码阅读推断架构设计的合理性 ✓
-- 边缘场景：`tests/` 为空——测试覆盖为0 ❌
-- 对抗样本：对抗性审稿Agent存在但无对抗测试用例 ❌
-- 多轮对话：LangGraph checkpoint支持但无相关测试 ❌
-
-### 数据来源
-- 源代码和配置文件：完整 ✓
-- 实际运行数据：无（未运行产品）
-- 用户反馈数据：无（产品未上线）
-- 成本报表：ModelScheduler有数据结构但无实际运行数据
+### Data Sources
+- Source code and configuration files: Complete ✓
+- Actual running data: None (Product not run)
+- User feedback data: None (Product not launched)
+- Cost reports: ModelScheduler has a data structure, but no actual running data

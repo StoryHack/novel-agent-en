@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import AsyncGenerator
 
-from pydantic import BaseModel, ValidationError
+from pydantic import AliasChoices, BaseModel, ValidationError
 
 from .client import BaseLLMProvider, LLMResponse
 
@@ -57,12 +57,16 @@ def _extract_json(text: str) -> str:
 
 
 def _build_field_map(response_model: type[BaseModel]) -> dict[str, str]:
-    """Build mapping from Chinese description → English field name."""
+    """Map descriptive keys and legacy aliases to their canonical field names."""
     mapping: dict[str, str] = {}
     for name, field in response_model.model_fields.items():
         desc = (field.description or "").strip()
         if desc:
             mapping[desc] = name
+        if isinstance(field.validation_alias, AliasChoices):
+            mapping.update(
+                (alias, name) for alias in field.validation_alias.choices if isinstance(alias, str)
+            )
     return mapping
 
 
@@ -167,15 +171,11 @@ def _coerce_field_types(data: dict, response_model: type[BaseModel]) -> dict:
     return data
 
 
-def _build_chinese_schema_prompt(response_model: type[BaseModel]) -> str:
-    """Build a Chinese-language schema description for local models.
-
-    Instead of dumping raw JSON Schema (which confuses Chinese-native models
-    with its English field names + Chinese descriptions), we build an explicit
-    template showing exactly what keys to use.
+def _build_schema_prompt(response_model: type[BaseModel]) -> str:
+    """Build a schema example for local models using the expected field names.
     """
     lines = [
-        "请严格按照以下 JSON 格式输出，**字段名必须使用英文**（括号内为中文说明），不要使用中文作为 JSON key：",
+        "Return JSON in the following format. Use the exact field names shown.",
         "",
         "```json",
         "{",
@@ -218,10 +218,10 @@ def _build_chinese_schema_prompt(response_model: type[BaseModel]) -> str:
             "}",
             "```",
             "",
-            "**重要提醒**：",
-            "- JSON 的 key 必须使用英文（如上面的 name, world_type），绝对不能使用中文作为 key",
-            "- 值的内容用中文",
-            "- 不要在上面的 JSON 中添加注释（// 或 # 等），输出必须是纯 JSON",
+            "Output requirements:",
+            "- Preserve the field names exactly (for example, name and world_type).",
+            "- Write text values in the requested language. If none is specified, use English.",
+            "- Return valid JSON without comments or surrounding Markdown.",
         ]
     )
 
@@ -320,7 +320,7 @@ class OpenAIProvider(BaseLLMProvider):
 
     For local models (Ollama) that may not follow English field-name instructions,
     we add three layers of defence:
-    1. Chinese-language schema prompt with explicit field-name requirements
+    1. Schema example with explicit field-name requirements
     2. Markdown code-fence extraction
     3. Fallback Chinese→English key translation using Field descriptions
     """
@@ -375,7 +375,7 @@ class OpenAIProvider(BaseLLMProvider):
             # schema into the prompt because they don't reliably support
             # response_format: {"type": "json_object"}.
             if self._is_ollama or self._is_third_party:
-                sys_prompt += "\n\n" + _build_chinese_schema_prompt(response_format)
+                sys_prompt += "\n\n" + _build_schema_prompt(response_format)
             else:
                 # Real OpenAI or OpenRouter — these support json_object mode
                 schema_json = json.dumps(response_format.model_json_schema(), ensure_ascii=False, indent=2)
@@ -453,7 +453,7 @@ class OpenAIProvider(BaseLLMProvider):
 
             # If the top-level object has a single Chinese key whose value
             # is a dict, unwrap it (model wrapped everything, e.g.
-            # {"世界观设定": {...actual data...}})
+            # {"worldbuilding": {...actual data...}}
             if isinstance(data, dict) and len(data) == 1:
                 sole_key = next(iter(data))
                 sole_val = data[sole_key]

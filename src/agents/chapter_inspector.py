@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from ..models.bible import NovelBible
 from ..models.chapter import ChapterDraft
 from ..models.outline import ChapterPlan
+from ..utils.text import count_words
 
 logger = logging.getLogger(__name__)
 
@@ -73,21 +74,21 @@ class InspectionResult:
 # ============================================================
 
 AI_FLAVOR_PATTERNS: list[tuple[str, str]] = [
-    (r"综上所述", '机械过渡词"综上所述"'),
-    (r"值得注意的是", '机械表达"值得注意的是"'),
-    (r"在.+的过程中", 'AI常用句式"在...的过程中"'),
-    (r"不仅.+而且", 'AI常用关联词"不仅...而且"'),
-    (r"然而\s*，", 'AI常用转折"然而"'),
-    (r"因此\s*，", 'AI常用因果"因此"'),
-    (r"与此同时\s*，", 'AI常用过渡"与此同时"'),
-    (r"总而言之", '机械总结"总而言之"'),
-    (r"从某种(?:意义|程度)上来说", "AI常用模糊表达"),
-    (r"不可否认的是", "AI常用强调"),
-    (r"可以(?:说|理解为|看作是)", "AI常用解释句式"),
-    (r"他感到一阵", 'AI常用情感描写"感到一阵"'),
-    (r"他的(?:心中|内心|心里)", "AI常用内心独白引入"),
-    (r"显得(?:格外|异常|十分)", "AI常用程度修饰"),
-    (r"仿佛", 'AI常用比喻引入"仿佛"（检查是否滥用）'),
+    (r"(?:综上所述|\b(?:in conclusion|to summarize)\b)", "Formulaic summary transition"),
+    (r"(?:值得注意的是|\b(?:it is worth noting|it should be noted)\b)", "Formulaic emphasis"),
+    (r"(?:在.+的过程中|\bin the process of\b)", "Formulaic time construction"),
+    (r"(?:不仅.+而且|\bnot only\b.+\bbut also\b)", "Formulaic paired conjunction"),
+    (r"(?:然而\s*，|\bhowever\s*,)", "Formulaic contrast transition"),
+    (r"(?:因此\s*，|\btherefore\s*,)", "Formulaic cause-and-effect transition"),
+    (r"(?:与此同时\s*，|\b(?:at the same time|meanwhile)\s*,)", "Formulaic simultaneous transition"),
+    (r"(?:总而言之|\b(?:in summary|all in all)\b)", "Formulaic conclusion"),
+    (r"(?:从某种(?:意义|程度)上来说|\b(?:in a sense|to some extent)\b)", "Vague qualification"),
+    (r"(?:不可否认的是|\b(?:it is undeniable|there is no denying)\b)", "Formulaic assertion"),
+    (r"(?:可以(?:说|理解为|看作是)|\b(?:it could be said|it can be seen as)\b)", "Formulaic explanation"),
+    (r"(?:他感到一阵|\b(?:he|she|they) felt a (?:wave|surge) of\b)", "Stock emotion description"),
+    (r"(?:他的(?:心中|内心|心里)|\b(?:deep down|in (?:his|her|their) heart)\b)", "Stock introduction to internal monologue"),
+    (r"(?:显得(?:格外|异常|十分)|\b(?:seemed unusually|appeared particularly)\b)", "Stock intensifier"),
+    (r"(?:仿佛|\bas if\b)", "Comparison phrase to check for overuse"),
 ]
 
 
@@ -138,7 +139,7 @@ class ChapterInspector:
         content = draft.content
 
         # ── 1. Word count ──
-        result.word_count = draft.word_count or len(content.replace(" ", "").replace("\n", ""))
+        result.word_count = draft.word_count or count_words(content)
         if chapter_plan:
             result.target_word_count = chapter_plan.word_count_target
         result.word_count_deviation = (
@@ -148,23 +149,22 @@ class ChapterInspector:
         )
         result.word_count_ok = abs(result.word_count_deviation) <= self.WORD_COUNT_TOLERANCE
         if not result.word_count_ok:
-            direction = "超" if result.word_count_deviation > 0 else "不足"
             result.issues.append(
-                f"字数{direction}标：目标{result.target_word_count}字，实际{result.word_count}字 "
-                f"({result.word_count_deviation:+.0%})"
+                f"Chapter length is outside the target range: {result.word_count} of "
+                f"{result.target_word_count} words ({result.word_count_deviation:+.0%})."
             )
 
         # ── 2. Dialogue ratio ──
         result.dialogue_ratio = self._estimate_dialogue_ratio(content)
         if result.dialogue_ratio < self.MIN_DIALOGUE_RATIO:
             result.dialogue_ok = False
-            result.warnings.append(f"对话比例偏低（{result.dialogue_ratio:.0%}），建议≥{self.MIN_DIALOGUE_RATIO:.0%}")
+            result.warnings.append(f"Dialogue ratio is low ({result.dialogue_ratio:.0%}). Aim for at least {self.MIN_DIALOGUE_RATIO:.0%}.")
         elif result.dialogue_ratio > self.MAX_DIALOGUE_RATIO:
             result.dialogue_ok = False
-            result.warnings.append(f"对话比例偏高（{result.dialogue_ratio:.0%}），建议≤{self.MAX_DIALOGUE_RATIO:.0%}")
+            result.warnings.append(f"Dialogue ratio is high ({result.dialogue_ratio:.0%}). Aim for at most {self.MAX_DIALOGUE_RATIO:.0%}.")
         elif result.dialogue_ratio < self.IDEAL_DIALOGUE_MIN:
             result.warnings.append(
-                f"对话比例略低（{result.dialogue_ratio:.0%}），网文推荐{self.IDEAL_DIALOGUE_MIN:.0%}-{self.IDEAL_DIALOGUE_MAX:.0%}"
+                f"Dialogue ratio is slightly low ({result.dialogue_ratio:.0%}). The suggested range is {self.IDEAL_DIALOGUE_MIN:.0%}–{self.IDEAL_DIALOGUE_MAX:.0%}."
             )
 
         # ── 3. Paragraph density ──
@@ -177,20 +177,20 @@ class ChapterInspector:
             result.wall_of_text_count = sum(1 for ln in lengths if ln > self.MAX_PARAGRAPH_LENGTH)
             if result.wall_of_text_count > 0:
                 result.warnings.append(
-                    f"发现{result.wall_of_text_count}个超长段落（>{self.MAX_PARAGRAPH_LENGTH}字），"
-                    f"建议拆分以提升移动端阅读体验"
+                    f"Split the {result.wall_of_text_count} paragraphs over {self.MAX_PARAGRAPH_LENGTH} characters "
+                    "to make them easier to read on mobile."
                 )
             if result.avg_paragraph_length > 300:
                 result.warnings.append(
-                    f"平均段落长度{result.avg_paragraph_length:.0f}字偏长，网文建议控制在200-300字/段"
+                    f"Paragraphs average {result.avg_paragraph_length:.0f} characters. Aim for 200–300 characters per paragraph."
                 )
 
         # ── 4. Chapter-end hook ──
         result.has_ending_hook, result.ending_hook_quality = self._check_ending_hook(content)
         if not result.has_ending_hook:
-            result.issues.append("章末缺少钩子：最后一段未能制造悬念或期待")
+            result.issues.append("The ending lacks a hook. Build suspense or anticipation in the last paragraph.")
         elif result.ending_hook_quality == "weak":
-            result.warnings.append("章末钩子偏弱，建议增强悬念感或信息增量")
+            result.warnings.append("The ending hook is weak. Add suspense or reveal new information.")
 
         # ── 5. Scene count vs plan ──
         if chapter_plan:
@@ -198,16 +198,16 @@ class ChapterInspector:
             result.scene_count_actual = self._count_scenes(content)
             if result.scene_count_actual < result.scene_count_planned * 0.5:
                 result.warnings.append(
-                    f"场景数不足：规划{result.scene_count_planned}个，实际约{result.scene_count_actual}个"
+                    f"Only about {result.scene_count_actual} of {result.scene_count_planned} planned scenes were found."
                 )
 
         # ── 6. AI-flavor markers ──
         result.ai_markers = self._detect_ai_markers(content)
         result.ai_marker_count = len(result.ai_markers)
         if result.ai_marker_count >= self.AI_MARKER_FAIL_THRESHOLD:
-            result.issues.append(f"AI味严重：检测到{result.ai_marker_count}处AI常用表达")
+            result.issues.append(f"Found {result.ai_marker_count} types of formulaic phrasing.")
         elif result.ai_marker_count >= self.AI_MARKER_WARN_THRESHOLD:
-            result.warnings.append(f"检测到{result.ai_marker_count}处AI常用表达，建议润色")
+            result.warnings.append(f"Consider revising the {result.ai_marker_count} types of formulaic phrasing.")
 
         # ── Determine overall pass/fail ──
         result.passed = len(result.issues) == 0
@@ -230,20 +230,20 @@ class ChapterInspector:
     def _estimate_dialogue_ratio(content: str) -> float:
         """Estimate dialogue ratio by counting quoted text.
 
-        Handles Chinese quotes 「」"" and Western quotes "".
+        Handles CJK quotation marks, curly quotation marks, and straight double quotes.
         """
         if not content:
             return 0.0
 
-        # Count characters inside Chinese dialogue markers
+        # Count characters inside dialogue markers.
         dialogue_chars = 0
-        # Chinese dialogue: 「...」 or "..."
-        for pattern in [r"「[^」]*」", r"『[^』]*』", r'"[^"]*"', r'"[^"]*"']:
+        # Support CJK, curly, and straight quotation marks.
+        for pattern in [r"「[^」]*」", r"『[^』]*』", r"“[^”]*”", r'"[^"]*"']:
             for match in re.finditer(pattern, content):
                 dialogue_chars += len(match.group())
 
         # Also count lines that start with character name patterns (play-style dialogue)
-        # 角色名：... or 角色名:...
+        # Role Name:...or Role Name:...
         name_dialogue = re.findall(r"(?:^|\n)\S{1,4}[：:][^\n]{10,}", content)
         for line in name_dialogue:
             dialogue_chars += len(line)
@@ -282,25 +282,25 @@ class ChapterInspector:
         strong_patterns = [
             r"[？?]",  # Question ending
             r"[！!]",  # Exclamation
-            r"突然|忽然|就在这时|正在这时|猛地",
-            r"却|竟然|居然|没想到|不料",
-            r"下一[步个秒刻章]|明天|即将|将要|马上",
-            r"暗[中处]|阴影|背后|秘密|真相",
-            r"危险|危机|杀[意气机]|死亡",
-            r"冷笑|诡异|神秘|未知|奇怪",
-            r"难道|莫非|难道说",
+            r"突然|忽然|就在这时|正在这时|猛地|\bsuddenly\b|\bjust then\b|\bat that moment\b",
+            r"却|竟然|居然|没想到|不料|\bunexpectedly\b|\bnever expected\b",
+            r"下一[步个秒刻章]|明天|即将|将要|马上|\btomorrow\b|\bthe next (?:day|moment|chapter)\b|\babout to\b",
+            r"暗[中处]|阴影|背后|秘密|真相|\bin the shadows\b|\bsecret\b|\bthe truth\b",
+            r"危险|危机|杀[意气机]|死亡|\bdanger\b|\bcrisis\b|\bdeath\b",
+            r"冷笑|诡异|神秘|未知|奇怪|\beerie\b|\bmysterious\b|\bstrange\b",
+            r"难道|莫非|难道说|\bcould it be\b|\bwhat if\b",
             r"……$|\.{3}$",  # Ellipsis ending
             r"嘴角|眼神|目光",  # Micro-expression hook
         ]
 
         # Weak ending indicators
         weak_patterns = [
-            r"^(?:就这样|于是|然后|接着|之后)",
+            r"^(?:就这样|于是|然后|接着|之后|Then\b|After that\b)",
             r"^(?:他|她|它)(?:想|觉得|知道|明白)",
         ]
 
-        strong_count = sum(1 for p in strong_patterns if re.search(p, last_two))
-        weak_count = sum(1 for p in weak_patterns if re.search(p, last))
+        strong_count = sum(1 for p in strong_patterns if re.search(p, last_two, re.IGNORECASE))
+        weak_count = sum(1 for p in weak_patterns if re.search(p, last, re.IGNORECASE))
 
         if len(last) < ChapterInspector.MIN_ENDING_HOOK_LENGTH:
             return False, "missing"
@@ -328,48 +328,48 @@ class ChapterInspector:
         """
         found = []
         for pattern, description in AI_FLAVOR_PATTERNS:
-            matches = re.findall(pattern, content)
+            matches = re.findall(pattern, content, re.IGNORECASE)
             if matches:
-                found.append(f"{description}（{len(matches)}次）")
+                found.append(f"{description} ({len(matches)} matches)")
         return found
 
     def format_report(self, result: InspectionResult) -> str:
         """Format inspection result as a human-readable report."""
         lines = [
             "=" * 50,
-            "章节结构检查报告",
+            "Chapter Structure Report",
             "=" * 50,
             "",
-            f"字数：{result.word_count}/{result.target_word_count} "
-            f"({'[OK] 达标' if result.word_count_ok else '[FAIL] 偏差' + f'{result.word_count_deviation:+.0%}'}) ",
-            f"对话比例：{result.dialogue_ratio:.0%} ({'[OK]' if result.dialogue_ok else '[WARN]'})",
-            f"段落数：{result.paragraph_count} | 平均{result.avg_paragraph_length:.0f}字/段",
-            f"超长段落：{result.wall_of_text_count}个",
-            f"章末钩子：{'[OK] 强' if result.ending_hook_quality == 'strong' else '[WARN] 弱' if result.ending_hook_quality == 'weak' else '[FAIL] 缺失'}",
-            f"场景数：约{result.scene_count_actual}个{' (规划' + str(result.scene_count_planned) + '个)' if result.scene_count_planned else ''}",
-            f"AI味标记：{result.ai_marker_count}处",
+            f"Word count: {result.word_count}/{result.target_word_count} "
+            f"({'[OK] On target' if result.word_count_ok else '[FAIL] Deviation ' + f'{result.word_count_deviation:+.0%}'}) ",
+            f"Dialogue ratio: {result.dialogue_ratio:.0%} ({'[OK]' if result.dialogue_ok else '[WARN]'})",
+            f"Paragraphs: {result.paragraph_count} | Average: {result.avg_paragraph_length:.0f} characters",
+            f"Overlong paragraphs: {result.wall_of_text_count}",
+            f"Ending hook: {'[OK] Strong' if result.ending_hook_quality == 'strong' else '[WARN] Weak' if result.ending_hook_quality == 'weak' else '[FAIL] Missing'}",
+            f"Scenes: about {result.scene_count_actual}{' (' + str(result.scene_count_planned) + ' planned)' if result.scene_count_planned else ''}",
+            f"Formulaic phrasing markers: {result.ai_marker_count}",
         ]
 
         if result.ai_markers:
             lines.append("")
-            lines.append("AI味详情：")
+            lines.append("Phrasing details:")
             for marker in result.ai_markers:
                 lines.append(f"  - {marker}")
 
         if result.issues:
             lines.append("")
-            lines.append("[FAIL] 必须修复：")
+            lines.append("[FAIL] Required revisions:")
             for issue in result.issues:
                 lines.append(f"  - {issue}")
 
         if result.warnings:
             lines.append("")
-            lines.append("[WARN] 建议优化：")
+            lines.append("[WARN] Suggested revisions:")
             for warning in result.warnings:
                 lines.append(f"  - {warning}")
 
         lines.append("")
-        lines.append(f"总结：{'[OK] 通过' if result.passed else '[FAIL] 未通过，建议修订后重新检查'}")
+        lines.append(f"Summary: {'[OK] Passed' if result.passed else '[FAIL] Revise and recheck'}")
         lines.append("=" * 50)
 
         return "\n".join(lines)

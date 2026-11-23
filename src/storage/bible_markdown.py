@@ -98,29 +98,29 @@ class BibleMarkdownStore:
             "category: world-building",
             "---",
             "",
-            f"# 世界观：{world.name}",
+            f"# World: {world.name}",
             "",
-            f"**世界类型**：{world.world_type}",
+            f"**World type**: {world.world_type}",
             "",
-            "## 地理环境",
+            "## Geography",
             "",
-            world.geography or "（待补充）",
+            world.geography or "(To be completed)",
             "",
-            "## 关键历史",
+            "## Key Historical Events",
             "",
-            world.history or "（待补充）",
+            world.history or "(To be completed)",
             "",
-            "## 文化习俗",
+            "## Cultural practices",
             "",
-            world.culture or "（待补充）",
+            world.culture or "(To be completed)",
             "",
-            f"**科技/魔法水平**：{world.technology_level or '待定'}",
+            f"**Technology or magic level**: {world.technology_level or 'To be decided'}",
             "",
         ]
         if world.magic_system:
             lines.extend(
                 [
-                    "## 魔法/力量体系",
+                    "## Magic or Power System",
                     "",
                     world.magic_system,
                     "",
@@ -129,7 +129,7 @@ class BibleMarkdownStore:
         if world.power_progression:
             lines.extend(
                 [
-                    "## 力量进阶体系",
+                    "## Power Progression",
                     "",
                     world.power_progression,
                     "",
@@ -138,7 +138,7 @@ class BibleMarkdownStore:
         if world.special_rules:
             lines.extend(
                 [
-                    "## 特殊世界规则",
+                    "## Special World Rules",
                     "",
                 ]
             )
@@ -157,7 +157,7 @@ class BibleMarkdownStore:
             "category: factions",
             "---",
             "",
-            f"# 势力与组织（共{len(factions)}个）",
+            f"# Factions and Organizations ({len(factions)})",
             "",
         ]
 
@@ -166,12 +166,12 @@ class BibleMarkdownStore:
                 [
                     f"## {i}. {f.name}",
                     "",
-                    f"- **ID**：{f.id}",
-                    f"- **类型**：{f.type}",
-                    f"- **目标**：{f.goal}",
-                    f"- **层级结构**：{f.hierarchy or '待定'}",
-                    f"- **资源**：{f.resources or '待定'}",
-                    f"- **意识形态**：{f.ideology or '待定'}",
+                    f"- **ID**: {f.id}",
+                    f"- **Type**: {f.type}",
+                    f"- **Goal**: {f.goal}",
+                    f"- **Hierarchy**: {f.hierarchy or 'To be decided'}",
+                    f"- **Resources**: {f.resources or 'To be decided'}",
+                    f"- **Ideology**: {f.ideology or 'To be decided'}",
                     "",
                 ]
             )
@@ -190,28 +190,28 @@ class BibleMarkdownStore:
             "category: writing-style",
             "---",
             "",
-            "# 文风契约",
+            "# Style Contract",
             "",
-            "| 参数 | 值 |",
+            "| Parameter | Value |",
             "|------|-----|",
-            f"| 语调 | {style.tone} |",
-            f"| 节奏偏好 | {style.pacing_preference} |",
-            f"| 句式风格 | {style.sentence_style} |",
-            f"| 对话占比 | {style.dialogue_ratio:.0%} |",
-            f"| 描写占比 | {style.description_ratio:.0%} |",
-            f"| 叙事距离 | {style.narrative_distance} |",
+            f"| Tone | {style.tone} |",
+            f"| Pacing | {style.pacing_preference} |",
+            f"| Sentence Style | {style.sentence_style} |",
+            f"| Dialogue | {style.dialogue_ratio:.0%} |",
+            f"| Description | {style.description_ratio:.0%} |",
+            f"| Narrative Distance | {style.narrative_distance} |",
             "",
         ]
 
         if style.forbidden_phrases:
-            lines.append("## 禁用表达")
+            lines.append("## Expressions to Avoid")
             lines.append("")
             for phrase in style.forbidden_phrases:
                 lines.append(f"- {phrase}")
             lines.append("")
 
         if style.preferred_techniques:
-            lines.append("## 推荐技法")
+            lines.append("## Recommended techniques")
             lines.append("")
             for tech in style.preferred_techniques:
                 lines.append(f"- {tech}")
@@ -228,9 +228,9 @@ class BibleMarkdownStore:
             "category: themes-and-conflicts",
             "---",
             "",
-            "# 主题与核心冲突",
+            "# Themes and Central Conflicts",
             "",
-            f"## 主题（共{len(themes)}个）",
+            f"## Themes ({len(themes)})",
             "",
         ]
 
@@ -238,17 +238,17 @@ class BibleMarkdownStore:
             lines.append(f"### {t.name}")
             lines.append(f"{t.description}")
             if t.expression:
-                lines.append(f"\n呈现方式：{t.expression}")
+                lines.append(f"\nExpression: {t.expression}")
             lines.append("")
 
-        lines.append(f"## 核心冲突（共{len(conflicts)}个）")
+        lines.append(f"## Central Conflicts ({len(conflicts)})")
         lines.append("")
 
         for c in conflicts:
             lines.append(f"### {c.type}")
             lines.append(f"{c.description}")
-            lines.append(f"- 涉及方：{c.parties_involved}")
-            lines.append(f"- 赌注：{c.stakes}")
+            lines.append(f"- Parties: {c.parties_involved}")
+            lines.append(f"- Stakes: {c.stakes}")
             lines.append("")
 
         self._write(FILE_THEMES, "\n".join(lines))
@@ -266,16 +266,16 @@ class BibleMarkdownStore:
             "category: pleasure-points",
             "---",
             "",
-            "# 爽点模型与叙事约束",
+            "# Payoff model and narrative constraints",
             "",
-            "## 爽点模型",
+            "## Payoff Model",
             "",
-            pleasure_model or "（待补充）",
+            pleasure_model or "(To be completed)",
             "",
         ]
 
         if constraints:
-            lines.append("## 叙事约束")
+            lines.append("## Narrative constraints")
             lines.append("")
             for c in constraints:
                 lines.append(f"- {c}")
@@ -297,11 +297,11 @@ class BibleMarkdownStore:
             "category: characters",
             "---",
             "",
-            f"# 角色列表（共{len(characters.characters)}人）",
+            f"# Characters ({len(characters.characters)})",
             "",
-            "> 注意：本文件为薄引用。完整角色卡请参见 `characters/` 目录。",
+            "> Full character profiles are in `characters/`.",
             "",
-            "| ID | 姓名 | 角色 | 性格摘要 | 动机 |",
+            "| ID | Name | Role | Personality | Motivation |",
             "|----|------|------|----------|------|",
         ]
 

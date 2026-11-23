@@ -13,12 +13,12 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # Feilu ranking pages — JS-rendered, need Playwright
-# Rank_1=标新榜(月票), Rank_2=总榜(点击), Rank_3=分类榜(收藏), Rank_4=女生榜(新书)
+# Rank_1: monthly votes. Rank_2: total views. Rank_3: bookmarks. Rank_4: new books for women.
 FEILU_RANK_URLS = [
-    ("月票榜(标新榜)", "https://b.faloo.com/Rank_1.html"),
-    ("总点击榜", "https://b.faloo.com/Rank_2.html"),
-    ("收藏分类榜", "https://b.faloo.com/Rank_3.html"),
-    ("女生新书榜", "https://b.faloo.com/Rank_4.html"),
+    ("Monthly Vote Rankings", "https://b.faloo.com/Rank_1.html"),
+    ("Total View Rankings", "https://b.faloo.com/Rank_2.html"),
+    ("Bookmark Rankings by Category", "https://b.faloo.com/Rank_3.html"),
+    ("New Books (Women)", "https://b.faloo.com/Rank_4.html"),
 ]
 
 FANQIE_RANK_API = "https://fanqienovel.com/api/rank/list"
@@ -27,14 +27,14 @@ FANQIE_BOOK_API = "https://fanqienovel.com/api/book"
 # Fanqie rank categories to try (the API may or may not respect these)
 FANQIE_RANK_CATEGORIES = [
     # (rank_type, gender, label)
-    (1, 1, "新书榜·男频"),
-    (1, 2, "新书榜·女频"),
-    (2, 1, "阅读榜·男频"),
-    (2, 2, "阅读榜·女频"),
-    (3, 1, "热搜榜·男频"),
-    (3, 2, "热搜榜·女频"),
-    (7, 1, "推荐榜·男频"),
-    (5, 1, "完结榜·男频"),
+    (1, 1, "New Books (Men)"),
+    (1, 2, "New Books (Women)"),
+    (2, 1, "Most Read (Men)"),
+    (2, 2, "Most Read (Women)"),
+    (3, 1, "Trending Searches (Men)"),
+    (3, 2, "Trending Searches (Women)"),
+    (7, 1, "Recommended (Men)"),
+    (5, 1, "Completed Books (Men)"),
 ]
 
 HEADERS = {
@@ -51,12 +51,12 @@ HEADERS = {
 
 
 # ================================================================
-# Feilu (飞卢)
+# Feilu
 # ================================================================
 
 
 async def scrape_feilu_rank() -> str | None:
-    """Scrape Feilu (飞卢) ranking pages using headless Chromium.
+    """Scrape Feilu ranking pages using headless Chromium.
 
     Feilu rank pages (b.faloo.com/Rank_*.html) are JavaScript-rendered.
     We use Playwright to render the page and extract book titles, authors,
@@ -72,9 +72,9 @@ async def scrape_feilu_rank() -> str | None:
     except ImportError:
         logger.error("Playwright not installed — cannot scrape Feilu")
         return (
-            "===== 飞卢小说榜单数据（来源：飞卢排名页面）=====\n"
-            "⚠️ 飞卢榜单需要使用浏览器渲染抓取，但Playwright未安装。\n"
-            "请联系管理员安装: pip install playwright && playwright install chromium\n"
+            "===== Feilu Rankings =====\n"
+            "Feilu rankings require browser rendering. Playwright is unavailable.\n"
+            "To install it, run: pip install playwright && playwright install chromium\n"
         )
 
     all_books: list[dict] = []
@@ -189,16 +189,16 @@ async def scrape_feilu_rank() -> str | None:
     except Exception as e:
         logger.error(f"Feilu Playwright scrape failed: {e}")
         return (
-            "===== 飞卢小说榜单数据（来源：飞卢排名页面）=====\n"
-            f"⚠️ 飞卢榜单抓取失败：{e}\n"
-            "请以番茄小说榜单数据为准进行分析。\n"
+            "===== Feilu Rankings =====\n"
+            f"Could not retrieve the Feilu rankings: {e}\n"
+            "Use the Fanqie rankings for analysis.\n"
         )
 
     if not all_books:
         return (
-            "===== 飞卢小说榜单数据（来源：飞卢排名页面）=====\n"
-            "⚠️ 飞卢榜单抓取完成，但未提取到书本数据。\n"
-            "请以番茄小说榜单数据为准进行分析。\n"
+            "===== Feilu Rankings =====\n"
+            "The Feilu pages loaded, but no books were extracted.\n"
+            "Use the Fanqie rankings for analysis.\n"
         )
 
     return _format_feilu_books(all_books)
@@ -210,32 +210,32 @@ def _format_feilu_books(books: list[dict]) -> str:
     by_list: dict[str, list[dict]] = {}
     list_order = []
     for b in books:
-        ln = b.get("list_name", "其他")
+        ln = b.get("list_name", "Other")
         if ln not in by_list:
             by_list[ln] = []
             list_order.append(ln)
         by_list[ln].append(b)
 
-    lines = [f"===== 飞卢小说榜单数据（共{len(books)}本，来源：浏览器实时抓取）=====\n"]
+    lines = [f"===== Feilu Rankings ({len(books)} books, fetched live) =====\n"]
     for ln in list_order:
         items = by_list[ln]
-        lines.append(f"--- {ln}（{len(items)}本）---")
+        lines.append(f"--- {ln} ({len(items)} books) ---")
         for i, b in enumerate(items, 1):
             rank = b.get("rank", i)
-            title = b.get("title", "未知")
+            title = b.get("title", "Unknown")
             author = b.get("author", "")
             url = b.get("url", "")
-            rank_str = f" 排名#{rank}" if rank > 0 else ""
-            author_str = f" 作者：{author}" if author else ""
+            rank_str = f" Rank #{rank}" if rank > 0 else ""
+            author_str = f" Author: {author}" if author else ""
             lines.append(f"#{i} 《{title}》{author_str}{rank_str}")
             if url:
-                lines.append(f"    链接：{url}")
+                lines.append(f"    Link: {url}")
         lines.append("")
     return "\n".join(lines)
 
 
 # ================================================================
-# Fanqie (番茄)
+# Fanqie
 # ================================================================
 
 
@@ -261,7 +261,7 @@ async def _fetch_fanqie_rank(rank_type: int, gender: int, limit: int = 10) -> li
 
 
 async def scrape_fanqie_rank() -> str | None:
-    """Scrape Fanqie (番茄) ranking data from multiple sources.
+    """Scrape Fanqie rankings from multiple sources.
 
     Strategy (in order):
     1. Query JSON API with multiple rank_type/gender combinations.
@@ -449,14 +449,14 @@ async def _scrape_fanqie_ssr_ids(existing_ids: set[str]) -> list[dict]:
 
 def _format_fanqie_books(books: list[dict]) -> str:
     """Format extracted Fanqie book data as structured text."""
-    lines = [f"===== 番茄小说榜单数据（共{len(books)}本，来源：综合热榜）=====\n"]
+    lines = [f"===== Fanqie Combined Rankings ({len(books)} books) =====\n"]
     for i, b in enumerate(books):
-        name = b.get("bookName", b.get("title", "未知"))
-        author = b.get("author", "未知")
+        name = b.get("bookName", b.get("title", "Unknown"))
+        author = b.get("author", "Unknown")
         abstract = (b.get("abstract", b.get("description", "")) or "")[:200]
-        lines.append(f"#{i + 1} 《{name}》 作者：{author}")
+        lines.append(f"#{i + 1} 《{name}》 Author: {author}")
         if abstract:
-            lines.append(f"    简介：{abstract}")
+            lines.append(f"    Synopsis: {abstract}")
     return "\n".join(lines)
 
 

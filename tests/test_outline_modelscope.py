@@ -48,11 +48,11 @@ def plot_planner(scheduler):
 def project_config():
     """Minimal project config for testing."""
     return ProjectConfig(
-        title="测试小说",
-        inspiration="一个废柴少年意外觉醒了远古血脉，在弱肉强食的修真世界一步步崛起的故事。",
-        genre=["玄幻", "修仙", "爽文"],
-        target_readers="喜欢热血升级流的男性读者",
-        tone="热血",
+        title="Test the novel",
+        inspiration="The story of a child who accidentally awakens ancient bloodlines and emerges step by step in a world where the weak and the weak eat.",
+        genre=["Fantasy", "Cultivation Fantasy", "It's a piece of shit"],
+        target_readers="A male reader who likes hot blood to escalate",
+        tone="Hot blood",
         target_word_count=90000,
     )
 
@@ -61,50 +61,50 @@ def project_config():
 def bible():
     """Minimal novel bible for testing."""
     world = WorldBuilding(
-        name="苍玄大陆",
+        name="Gentle Continent",
         world_type="fantasy",
-        geography="九大州，中央为圣地，四方为蛮荒之地",
-        history="万年前仙魔大战后天地灵气稀薄，修真文明衰退",
-        culture="以实力为尊，宗门为基本单位",
-        technology_level="修真文明，凡人处于封建时代",
-        magic_system="修真体系：炼气→筑基→金丹→元婴→化神→合体→大乘→渡劫",
-        power_progression="每个大境界分九层小境界",
+        geography="Nine great states, the center of which is holy land, and the Quarters of which is a wilderness",
+        history="A thousand years ago, after the Great War of the Dynasty, the spirit of the world was thin and the civilization was deformed",
+        culture="It's all about strength, and it's all about the fundamentals",
+        technology_level="True civilization. Human beings are in feudal times",
+        magic_system="Realization system: →, building base →, Kimdan, baby →, baby →, chemical God, →, →, taking → to the beach",
+        power_progression="It's a nine-storey border",
     )
     factions = [
         Faction(
-            name="青云宗",
+            name="Green Yunzong",
             faction_type="sect",
-            goal="培养修真人才，维护正道",
-            resources="灵石矿脉、藏经阁、炼丹房",
+            goal="Build a true man and maintain the right path",
+            resources="Psychic veins, hidden in the loft, in the purgatory",
         ),
         Faction(
-            name="魔渊教",
+            name="Heavenly Demon Sect",
             faction_type="cult",
-            goal="颠覆正道统治，夺取天地灵脉",
-            resources="魔气源泉、暗杀组织",
+            goal="To overthrow the rule of the right path and seize the heart of the heavens and earth",
+            resources="A source of magic, a group of assassins",
         ),
     ]
     style = StyleContract(
-        tone="热血",
+        tone="Hot blood",
         pacing_preference="fast",
         sentence_style="varied",
         dialogue_ratio=0.35,
         description_ratio=0.25,
     )
     themes = [
-        Theme(name="逆袭成长", description="主角从废柴一步步走向巅峰"),
-        Theme(name="友情与背叛", description="修真路上的盟友与敌人"),
+        Theme(name="Growth Against the Odds", description="The lead is moving from wastewood to the top"),
+        Theme(name="Friendship and betrayal", description="Allies and enemies on the path to the truth"),
     ]
     conflicts = [
         CoreConflict(
             conflict_type="person_vs_society",
-            description="主角被家族抛弃后在宗门中证明自己",
-            stakes="生存与尊严",
+            description="The main character was abandoned by the family and proved himself in the court",
+            stakes="Survival and dignity",
         ),
         CoreConflict(
             conflict_type="person_vs_person",
-            description="主角与宿敌的终极对决",
-            stakes="大道之争，不死不休",
+            description="The final rivalry between the protagonist and the enemy",
+            stakes="There's a fight in the streets",
         ),
     ]
     return NovelBible(
@@ -114,7 +114,7 @@ def bible():
         style_contract=style,
         themes=themes,
         core_conflicts=conflicts,
-        pleasure_point_model="每10章一个小高潮：突破境界、打脸反派、获得机缘",
+        pleasure_point_model="One small orgasm for every 10 chapters: breaking the border, beating the face, getting the chance",
     )
 
 
@@ -125,21 +125,21 @@ def characters():
         characters={
             "char_001": CharacterProfile(
                 id="char_001",
-                name="秦默",
+                name="Qin Mo",
                 role="protagonist",
-                personality="坚韧不拔，心思缜密，但有时过于冒险",
-                motivation="打破命运枷锁，成为最强修真者",
-                flaw="过于固执，不轻易相信他人",
-                backstory="秦家嫡系却天生废脉，被家族流放至偏远矿区，偶得远古血脉传承",
+                personality="Strong, well-thought-out, sometimes too risky",
+                motivation="Breaking the shackles of fate and becoming the strongest of true men",
+                flaw="Too stubborn to trust people",
+                backstory="Qin's family is a natural waste of life and is exiled by the family to a remote mine",
             ),
             "char_002": CharacterProfile(
                 id="char_002",
-                name="苏婉清",
+                name="Su Wanqing",
                 role="deuteragonist",
-                personality="外冷内热，聪慧过人",
-                motivation="寻找失散多年的师父",
-                flaw="不善于表达感情",
-                backstory="青云宗第一天才，身世成谜",
+                personality="It's cold, it's hot, it's smart",
+                motivation="Looking for a teacher who's been separated for years",
+                flaw="I'm not good at expressing feelings",
+                backstory="It's only been the first day, and it's a mystery",
             ),
         }
     )
@@ -214,60 +214,60 @@ class TestMasterOutlineValidation:
         from src.agents.plot_planner import MasterOutlineOutput
 
         data = {
-            "title": "测试小说",
-            "logline": "一个测试故事",
+            "title": "Test the novel",
+            "logline": "A test story",
             "main_plot": [
-                {"name": "主线", "description": "主角的成长"},
+                {"name": "Main Plot", "description": "The protagonist's growth"},
             ],
             "subplots": [],
             "volumes": [
-                {"title": "第一卷", "start_chapter": 1, "end_chapter": 10},
+                {"title": "Volume I", "start_chapter": 1, "end_chapter": 10},
             ],
             "major_turning_points": [
-                "主角意外获得传承",  # plain string!
-                "主角击败第一个敌人",
+                "The hero's unexpectedly inherited",  # plain string!
+                "The hero beats the first enemy",
             ],
             "chapter_count": 15,
         }
         result = MasterOutlineOutput.model_validate(data)
         assert len(result.major_turning_points) == 2
-        assert result.major_turning_points[0].description == "主角意外获得传承"
-        assert result.major_turning_points[1].description == "主角击败第一个敌人"
+        assert result.major_turning_points[0].description == "The hero's unexpectedly inherited"
+        assert result.major_turning_points[1].description == "The hero beats the first enemy"
 
     def test_string_plot_arcs(self):
         """Plot arcs as plain strings should be coerced."""
         from src.agents.plot_planner import MasterOutlineOutput
 
         data = {
-            "title": "测试小说",
-            "logline": "一个测试故事",
+            "title": "Test the novel",
+            "logline": "A test story",
             "main_plot": [
-                "主角从废柴到强者",  # plain string!
+                "The main character is from a loser to a strong man",  # plain string!
             ],
             "subplots": [
-                "爱情线",  # plain string!
+                "Loveline",  # plain string!
             ],
             "volumes": [
-                {"title": "第一卷", "start_chapter": 1, "end_chapter": 10},
+                {"title": "Volume I", "start_chapter": 1, "end_chapter": 10},
             ],
             "major_turning_points": [],
             "chapter_count": 15,
         }
         result = MasterOutlineOutput.model_validate(data)
         assert len(result.main_plot) == 1
-        assert result.main_plot[0].description == "主角从废柴到强者"
+        assert result.main_plot[0].description == "The main character is from a loser to a strong man"
         assert len(result.subplots) == 1
-        assert result.subplots[0].description == "爱情线"
+        assert result.subplots[0].description == "Loveline"
 
     def test_volume_string_chapter_numbers(self):
         """Volume start/end chapter as strings should be coerced by Pydantic."""
         data = {
-            "title": "测试小说",
-            "logline": "测试",
+            "title": "Test the novel",
+            "logline": "Test",
             "main_plot": [],
             "subplots": [],
             "volumes": [
-                {"title": "第一卷", "start_chapter": "1", "end_chapter": "10"},
+                {"title": "Volume I", "start_chapter": "1", "end_chapter": "10"},
             ],
             "major_turning_points": [],
             "chapter_count": 15,
@@ -279,27 +279,27 @@ class TestMasterOutlineValidation:
         assert result.volumes[0].end_chapter == 10
 
     def test_turning_point_chinese_type_key(self):
-        """TurningPoint with Chinese key '类型' should be mapped to turning_type."""
+        """TurningPoint with The type key should be mapped to turning_type."""
         from src.models.outline import TurningPoint
 
         # Qwen might output "type" in English, which TurningPoint already handles
-        data = {"type": "inciting_incident", "chapter": 1, "description": "主角觉醒"}
+        data = {"type": "inciting_incident", "chapter": 1, "description": "The protagonist awakens"}
         result = TurningPoint.model_validate(data)
         assert result.turning_type == "inciting_incident"
 
     def test_plot_arc_chinese_keys(self):
-        """PlotArc with Chinese-style keys."""
+        """Recognize the arc alias for a plot arc name."""
         from src.models.outline import PlotArc
 
-        data = {"arc": "主角线", "description": "主角成长", "start_chapter": 1, "end_chapter": 30}
+        data = {"arc": "Protagonist Arc", "description": "The protagonist grows", "start_chapter": 1, "end_chapter": 30}
         result = PlotArc.model_validate(data)
-        assert result.name == "主角线"
+        assert result.name == "Protagonist Arc"
 
     def test_emotional_beat_intensity_clamp(self):
         """EmotionalBeat intensity 0-10 scale should be clamped to 0-1."""
         from src.models.outline import EmotionalBeat
 
-        data = {"position": 0.5, "emotion": "激动", "intensity": 8}
+        data = {"position": 0.5, "emotion": "Excitement", "intensity": 8}
         result = EmotionalBeat.model_validate(data)
         assert result.intensity == 0.8
 
@@ -307,7 +307,7 @@ class TestMasterOutlineValidation:
         """EmotionalBeat intensity as string should be parsed."""
         from src.models.outline import EmotionalBeat
 
-        data = {"position": 0.5, "emotion": "激动", "intensity": "0.7"}
+        data = {"position": 0.5, "emotion": "Excited", "intensity": "0.7"}
         result = EmotionalBeat.model_validate(data)
         assert result.intensity == 0.7
 
@@ -315,24 +315,24 @@ class TestMasterOutlineValidation:
         """Hook as plain string should be coerced to description."""
         from src.models.outline import Hook
 
-        result = Hook.model_validate("主角发现了一座隐藏的洞府")
-        assert result.description == "主角发现了一座隐藏的洞府"
+        result = Hook.model_validate("The main character found a hidden cave")
+        assert result.description == "The main character found a hidden cave"
         assert result.hook_type == "cliffhanger"
 
     def test_scene_plain_string(self):
         """Scene as plain string should be coerced."""
         from src.models.outline import Scene
 
-        result = Scene.model_validate("青云宗广场：主角参加入门考核")
-        assert result.setting == "青云宗广场"
-        assert "入门考核" in result.goal
+        result = Scene.model_validate("Azure Cloud Sect Square: The protagonist takes the entrance exam")
+        assert result.setting == "Azure Cloud Sect Square"
+        assert "entrance exam" in result.goal
 
     def test_empty_lists_accepted(self):
         """All empty lists should be accepted without issues."""
         from src.agents.plot_planner import MasterOutlineOutput
 
         data = {
-            "title": "空测试",
+            "title": "Empty Test",
             "logline": "",
             "main_plot": [],
             "subplots": [],
@@ -341,7 +341,7 @@ class TestMasterOutlineValidation:
             "chapter_count": 0,
         }
         result = MasterOutlineOutput.model_validate(data)
-        assert result.title == "空测试"
+        assert result.title == "Empty Test"
         assert result.chapter_count == 0
 
     def test_volume_with_introduction_alias(self):
@@ -349,27 +349,27 @@ class TestMasterOutlineValidation:
         from src.models.outline import Volume
 
         data = {
-            "title": "第一卷",
-            "introduction": "从家族弃子到宗门弟子的成长之路",
+            "title": "Volume I",
+            "introduction": "From family abandonment to the growth of my disciples",
             "start_chapter": 1,
             "end_chapter": 10,
         }
         result = Volume.model_validate(data)
-        assert result.logline == "从家族弃子到宗门弟子的成长之路"
+        assert result.logline == "From family abandonment to the growth of my disciples"
 
     def test_volume_with_key_events_alias(self):
         """Volume with 'key_events' key should map to major_events."""
         from src.models.outline import Volume
 
         data = {
-            "title": "第一卷",
-            "key_events": ["血脉觉醒", "宗门考核", "初战告捷"],
+            "title": "Volume I",
+            "key_events": ["Blood and blood awakening", "Zongmen's exam", "The first battle is a big one"],
             "start_chapter": 1,
             "end_chapter": 10,
         }
         result = Volume.model_validate(data)
         assert len(result.major_events) == 3
-        assert result.major_events[0] == "血脉觉醒"
+        assert result.major_events[0] == "Blood and blood awakening"
 
     def test_plot_arc_auto_name_from_description(self):
         """PlotArc with no name should derive from description."""
@@ -377,10 +377,10 @@ class TestMasterOutlineValidation:
 
         data = {
             "type": "subplot",
-            "description": "苏婉清寻找失散师父的调查线",
+            "description": "Su Wanqing searches for her missing mentor",
         }
         result = PlotArc.model_validate(data)
-        assert result.name == "苏婉清寻找失散师父的调查线"
+        assert result.name == data["description"][:20]
         assert result.arc_type == "subplot"
 
     def test_plot_arc_auto_name_from_arc_type(self):
@@ -391,7 +391,7 @@ class TestMasterOutlineValidation:
             "type": "b_plot",
         }
         result = PlotArc.model_validate(data)
-        assert result.name == "副线"
+        assert result.name == "Secondary Plot"
         assert result.arc_type == "b_plot"
 
     def test_volume_strings_in_output(self):
@@ -399,24 +399,24 @@ class TestMasterOutlineValidation:
         from src.agents.plot_planner import MasterOutlineOutput
 
         data = {
-            "title": "测试小说",
-            "logline": "测试故事",
+            "title": "Test the novel",
+            "logline": "Test Story",
             "main_plot": [],
             "subplots": [],
             "volumes": [
-                "第一卷：废土觉醒 — 从生存本能到守护信念",
-                "第二卷：血契狂潮 — 危机与盟友羁绊",
+                "Volume 1: Awakening in the Wasteland",
+                "Volume 2: The Blood Pact",
             ],
             "major_turning_points": [],
             "chapter_count": 20,
         }
         result = MasterOutlineOutput.model_validate(data)
         assert len(result.volumes) == 2
-        assert result.volumes[0].title == "废土觉醒 — 从生存本能到守护信念"
+        assert result.volumes[0].title == "Awakening in the Wasteland"
         assert result.volumes[0].number == 1
         assert result.volumes[0].start_chapter == 1
         assert result.volumes[0].end_chapter == 10
-        assert result.volumes[1].title == "血契狂潮 — 危机与盟友羁绊"
+        assert result.volumes[1].title == "The Blood Pact"
         assert result.volumes[1].number == 2
         assert result.volumes[1].start_chapter == 11
         assert result.volumes[1].end_chapter == 20
@@ -426,19 +426,19 @@ class TestMasterOutlineValidation:
         from src.agents.plot_planner import MasterOutlineOutput
 
         data = {
-            "title": "测试",
-            "logline": "测试",
+            "title": "Test",
+            "logline": "Test",
             "main_plot": [],
             "subplots": [],
-            "volumes": ["觉醒篇", "成长篇", "巅峰篇"],
+            "volumes": ["Wake up", "Growing", "Top of the line"],
             "major_turning_points": [],
             "chapter_count": 30,
         }
         result = MasterOutlineOutput.model_validate(data)
         assert len(result.volumes) == 3
-        assert result.volumes[0].title == "觉醒篇"
+        assert result.volumes[0].title == "Wake up"
         assert result.volumes[0].number == 1
-        assert result.volumes[1].title == "成长篇"
+        assert result.volumes[1].title == "Growing"
         assert result.volumes[1].number == 2
 
 
@@ -454,17 +454,17 @@ class TestChapterPlanValidation:
 
         data = {
             "chapter_number": 1,
-            "title": "第一章",
-            "goal": "建立世界观",
+            "title": "Chapter I",
+            "goal": "Building a world view",
             "scenes": [],
             "pov_character": "char_001",
-            "conflict": "测试冲突",
+            "conflict": "Test Conflict",
             "emotional_curve": [
-                {"position": 0.0, "emotion": "平静", "intensity": 3},
-                {"position": 0.5, "emotion": "紧张", "intensity": 8},
-                {"position": 1.0, "emotion": "激动", "intensity": 9},
+                {"position": 0.0, "emotion": "Calm down", "intensity": 3},
+                {"position": 0.5, "emotion": "Nervous", "intensity": 8},
+                {"position": 1.0, "emotion": "Excited", "intensity": 9},
             ],
-            "ending_hook": "悬念结尾",
+            "ending_hook": "End of Suspended",
             "word_count_target": 3000,
         }
         result = ChapterPlanOutput.model_validate(data)
@@ -478,22 +478,22 @@ class TestChapterPlanValidation:
 
         data = {
             "chapter_number": 1,
-            "title": "第一章",
-            "goal": "测试",
+            "title": "Chapter I",
+            "goal": "Test",
             "scenes": [
-                "修炼室：主角突破境界",
-                {"setting": "宗门大殿", "goal": "接受任务", "conflict": "有人质疑主角"},
+                "Refinery: The lead is breaking through",
+                {"setting": "Zongmen Palace", "goal": "Take the task", "conflict": "Some question the main character"},
             ],
             "pov_character": "char_001",
-            "conflict": "测试",
+            "conflict": "Test",
             "emotional_curve": [],
             "ending_hook": "",
             "word_count_target": 3000,
         }
         result = ChapterPlanOutput.model_validate(data)
         assert len(result.scenes) == 2
-        assert result.scenes[0].setting == "修炼室"
-        assert result.scenes[1].setting == "宗门大殿"
+        assert result.scenes[0].setting == "Refinery"
+        assert result.scenes[1].setting == "Zongmen Palace"
 
     def test_emotional_curve_string_items(self):
         """Emotional curve items as strings should be parsed to dicts."""
@@ -501,26 +501,26 @@ class TestChapterPlanValidation:
 
         data = {
             "chapter_number": 1,
-            "title": "第一章",
-            "goal": "测试",
+            "title": "Chapter I",
+            "goal": "Test",
             "scenes": [],
             "pov_character": "char_001",
-            "conflict": "测试",
+            "conflict": "Test",
             "emotional_curve": [
-                "压抑，强度0.9",
-                "愤怒，强度0.7",
-                "紧张，强度0.95",
-                "惊喜，强度0.85",
-                "笃定，强度0.8",
+                "Oppression, intensity 0.9",
+                "Anger, intensity 0.7",
+                "Tension, intensity 0.95",
+                "Surprise, intensity 0.85",
+                "Resolve, intensity 0.8",
             ],
             "ending_hook": "",
             "word_count_target": 3000,
         }
         result = ChapterPlanOutput.model_validate(data)
         assert len(result.emotional_curve) == 5
-        assert result.emotional_curve[0].emotion == "压抑"
+        assert result.emotional_curve[0].emotion == "Oppression"
         assert result.emotional_curve[0].intensity == 0.9  # Already in 0-1 scale
-        assert result.emotional_curve[2].emotion == "紧张"
+        assert result.emotional_curve[2].emotion == "Tension"
         assert result.emotional_curve[2].intensity == 0.95
 
     def test_emotional_curve_string_wrong(self):
@@ -529,15 +529,15 @@ class TestChapterPlanValidation:
 
         data = {
             "chapter_number": 1,
-            "title": "第一章",
-            "goal": "测试",
+            "title": "Chapter I",
+            "goal": "Test",
             "scenes": [],
             "pov_character": "char_001",
-            "conflict": "测试",
+            "conflict": "Test",
             "emotional_curve": [
-                "平静，强度3",
-                "紧张，强度8",
-                "激动，强度9",
+                "Calm, intensity 3",
+                "Tension, intensity 8",
+                "Excitement, intensity 9",
             ],
             "ending_hook": "",
             "word_count_target": 3000,
@@ -548,27 +548,27 @@ class TestChapterPlanValidation:
         assert result.emotional_curve[2].intensity == 0.9
 
     def test_emotional_curve_dict_with_parenthesized_intensity(self):
-        """Dict items where emotion contains '(强度X.X)' should extract intensity."""
+        """Extract a parenthesized intensity from the emotion field."""
         from src.agents.plot_planner import ChapterPlanOutput
 
         data = {
             "chapter_number": 1,
-            "title": "第一章",
-            "goal": "测试",
+            "title": "Chapter I",
+            "goal": "Test",
             "scenes": [],
             "pov_character": "char_001",
-            "conflict": "测试",
+            "conflict": "Test",
             "emotional_curve": [
-                {"position": 0.0, "emotion": "压抑（强度0.9）"},
-                {"position": 0.3, "emotion": "担忧（强度0.7）"},
-                {"position": 0.5, "emotion": "紧张（强度0.85）"},
+                {"position": 0.0, "emotion": "Oppression (intensity 0.9)"},
+                {"position": 0.3, "emotion": "Concern (intensity 0.7)"},
+                {"position": 0.5, "emotion": "Tension (intensity 0.85)"},
             ],
             "ending_hook": "",
             "word_count_target": 3000,
         }
         result = ChapterPlanOutput.model_validate(data)
         assert len(result.emotional_curve) == 3
-        assert result.emotional_curve[0].emotion == "压抑"
+        assert result.emotional_curve[0].emotion == "Oppression"
         assert result.emotional_curve[0].intensity == 0.9
 
     def test_emotional_curve_string_parenthesized(self):
@@ -577,20 +577,20 @@ class TestChapterPlanValidation:
 
         data = {
             "chapter_number": 1,
-            "title": "第一章",
-            "goal": "测试",
+            "title": "Chapter I",
+            "goal": "Test",
             "scenes": [],
             "pov_character": "char_001",
-            "conflict": "测试",
+            "conflict": "Test",
             "emotional_curve": [
-                "压抑（强度0.9）",
-                "愤怒（强度0.7）",
+                "Oppression (intensity 0.9)",
+                "Anger (intensity 0.7)",
             ],
             "ending_hook": "",
             "word_count_target": 3000,
         }
         result = ChapterPlanOutput.model_validate(data)
-        assert result.emotional_curve[0].emotion == "压抑"
+        assert result.emotional_curve[0].emotion == "Oppression"
         assert result.emotional_curve[0].intensity == 0.9
 
 
@@ -677,46 +677,46 @@ if __name__ == "__main__":
         pp = PlotPlannerAgent(s)
 
         pc = ProjectConfig(
-            title="测试小说",
-            inspiration="一个废柴少年意外觉醒了远古血脉，在弱肉强食的修真世界一步步崛起的故事。",
-            genre=["玄幻", "修仙", "爽文"],
-            target_readers="喜欢热血升级流的男性读者",
-            tone="热血",
+            title="Test the novel",
+            inspiration="The story of a child who accidentally awakens ancient bloodlines and emerges step by step in a world where the weak and the weak eat.",
+            genre=["Fantasy", "Cultivation Fantasy", "It's a piece of shit"],
+            target_readers="A male reader who likes hot blood to escalate",
+            tone="Hot blood",
             target_word_count=90000,
         )
 
         world = WorldBuilding(
-            name="苍玄大陆",
+            name="Gentle Continent",
             world_type="fantasy",
-            geography="九大州",
-            history="万年前仙魔大战",
-            culture="以实力为尊",
-            magic_system="修真体系",
+            geography="Nine States",
+            history="A thousand years ago, the War of the Wonders",
+            culture="It's all about strength",
+            magic_system="Truth system",
         )
         bible = NovelBible(
             world=world,
             factions=[
-                Faction(name="青云宗", faction_type="sect", goal="维护正道"),
-                Faction(name="魔渊教", faction_type="cult", goal="颠覆正道"),
+                Faction(name="Green Yunzong", faction_type="sect", goal="Keep it straight"),
+                Faction(name="Heavenly Demon Sect", faction_type="cult", goal="Overthrow the orthodox sects"),
             ],
             rules=NarrativeRules(),
-            style_contract=StyleContract(tone="热血"),
-            themes=[Theme(name="逆袭成长"), Theme(name="友情与背叛")],
+            style_contract=StyleContract(tone="Hot blood"),
+            themes=[Theme(name="Growth Against the Odds"), Theme(name="Friendship and betrayal")],
             core_conflicts=[
-                CoreConflict(conflict_type="person_vs_society", description="主角被家族抛弃"),
-                CoreConflict(conflict_type="person_vs_person", description="主角与宿敌对决"),
+                CoreConflict(conflict_type="person_vs_society", description="The main character was abandoned by the family"),
+                CoreConflict(conflict_type="person_vs_person", description="The main character and Hsing are fighting each other"),
             ],
         )
         chars = CharacterRegistry(
             characters={
                 "char_001": CharacterProfile(
                     id="char_001",
-                    name="秦默",
+                    name="Qin Mo",
                     role="protagonist",
-                    personality="坚韧不拔",
-                    motivation="成为最强",
-                    flaw="过于固执",
-                    backstory="被家族流放",
+                    personality="You're tough",
+                    motivation="Be the strongest",
+                    flaw="Too stubborn",
+                    backstory="Exiled by the family",
                 ),
             }
         )

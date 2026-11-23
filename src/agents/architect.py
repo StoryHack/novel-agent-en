@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from ..models.bible import (
     CoreConflict,
@@ -57,15 +57,35 @@ def _normalize_optional_str(value: Any) -> str | None:
 class WorldBuildingOutput(BaseModel):
     """LLM output schema for world building."""
 
-    name: str = Field(..., description="世界名称")
-    world_type: str = Field(..., description="世界类型")
-    geography: str = Field(default="", description="地理环境")
-    history: str = Field(default="", description="关键历史")
-    culture: str = Field(default="", description="文化习俗")
-    technology_level: str = Field(default="", description="科技/魔法水平")
-    magic_system: str | None = Field(default=None, description="魔法/力量体系")
-    power_progression: str | None = Field(default=None, description="力量进阶体系")
-    special_rules: list[str] = Field(default_factory=list, description="特殊世界规则")
+    name: str = Field(..., description="World name", validation_alias=AliasChoices("name", "世界名称"))
+    world_type: str = Field(..., description="World type", validation_alias=AliasChoices("world_type", "世界类型"))
+    geography: str = Field(default="", description="Geography", validation_alias=AliasChoices("geography", "地理环境"))
+    history: str = Field(
+        default="",
+        description="Key historical events",
+        validation_alias=AliasChoices("history", "关键历史"),
+    )
+    culture: str = Field(default="", description="Cultural practices", validation_alias=AliasChoices("culture", "文化习俗"))
+    technology_level: str = Field(
+        default="",
+        description="Technology/magic level",
+        validation_alias=AliasChoices("technology_level", "科技/魔法水平"),
+    )
+    magic_system: str | None = Field(
+        default=None,
+        description="Magic/power systems",
+        validation_alias=AliasChoices("magic_system", "魔法/力量体系"),
+    )
+    power_progression: str | None = Field(
+        default=None,
+        description="Power progression",
+        validation_alias=AliasChoices("power_progression", "力量进阶体系"),
+    )
+    special_rules: list[str] = Field(
+        default_factory=list,
+        description="Special World Rules",
+        validation_alias=AliasChoices("special_rules", "特殊世界规则"),
+    )
 
     @field_validator("special_rules", mode="before")
     @classmethod
@@ -87,14 +107,42 @@ class FactionsOutput(BaseModel):
 class StyleContractOutput(BaseModel):
     """LLM output schema for style contract."""
 
-    tone: str = Field(default="", description="语调")
-    pacing_preference: str = Field(default="medium", description="节奏偏好")
-    sentence_style: str = Field(default="varied", description="句式风格")
-    dialogue_ratio: float = Field(default=0.35, description="对话比例")
-    description_ratio: float = Field(default=0.30, description="描写比例")
-    narrative_distance: str = Field(default="close", description="叙事距离")
-    forbidden_phrases: list[str] = Field(default_factory=list, description="禁用表达")
-    preferred_techniques: list[str] = Field(default_factory=list, description="推荐技法")
+    tone: str = Field(default="", description="Tone", validation_alias=AliasChoices("tone", "语调"))
+    pacing_preference: str = Field(
+        default="medium",
+        description="Preferred pacing",
+        validation_alias=AliasChoices("pacing_preference", "节奏偏好"),
+    )
+    sentence_style: str = Field(
+        default="varied",
+        description="Sentence style",
+        validation_alias=AliasChoices("sentence_style", "句式风格"),
+    )
+    dialogue_ratio: float = Field(
+        default=0.35,
+        description="Percentage of dialogue",
+        validation_alias=AliasChoices("dialogue_ratio", "对话比例"),
+    )
+    description_ratio: float = Field(
+        default=0.30,
+        description="Proportion of description",
+        validation_alias=AliasChoices("description_ratio", "描写比例"),
+    )
+    narrative_distance: str = Field(
+        default="close",
+        description="Narrative distance",
+        validation_alias=AliasChoices("narrative_distance", "叙事距离"),
+    )
+    forbidden_phrases: list[str] = Field(
+        default_factory=list,
+        description="Expressions to avoid",
+        validation_alias=AliasChoices("forbidden_phrases", "禁用表达"),
+    )
+    preferred_techniques: list[str] = Field(
+        default_factory=list,
+        description="Recommended techniques",
+        validation_alias=AliasChoices("preferred_techniques", "推荐技法"),
+    )
 
 
 class ThemesOutput(BaseModel):
@@ -112,8 +160,16 @@ class ConflictsOutput(BaseModel):
 class PleasurePointOutput(BaseModel):
     """LLM output schema for pleasure point design."""
 
-    pleasure_point_model: str = Field(default="", description="爽点模型描述")
-    narrative_constraints: list[str] = Field(default_factory=list, description="叙事约束")
+    pleasure_point_model: str = Field(
+        default="",
+        description="Payoff Model Description",
+        validation_alias=AliasChoices("pleasure_point_model", "爽点模型描述"),
+    )
+    narrative_constraints: list[str] = Field(
+        default_factory=list,
+        description="Narrative constraints",
+        validation_alias=AliasChoices("narrative_constraints", "叙事约束"),
+    )
 
 
 # ============================================================
@@ -137,36 +193,32 @@ class ArchitectAgent(BaseAgent):
     async def build_world(self, config: ProjectConfig) -> WorldBuilding:
         """Design the story world based on project configuration."""
         system_default = self.build_system_prompt(
-            role="世界观架构师",
-            expertise="构建宏大、自洽、有深度的虚构世界。擅长设计地理、历史、文化、力量体系，"
-            "并能确保世界观服务于故事主题和爽点。",
+            role="worldbuilding architect",
+            expertise="Design expansive, internally consistent fictional worlds. Develop their geography, history, culture, and power systems in support of the story's themes and payoffs.",
         )
-        user_default = f"""请为以下小说创意构建完整的世界观设定：
+        user_default = f"""Build a coherent fictional world for this novel concept.
 
-【灵感/创意】
+Inspiration:
 {config.inspiration}
 
-【题材】{", ".join(config.genre)}
-【目标读者】{config.target_readers}
-【篇幅】{config.target_length.value}（约{config.target_word_count}字）
-【语调】{config.tone}
+Genre: {', '.join(config.genre)}
+Target readers: {config.target_readers}
+Length: {config.target_length.value} (about {config.target_word_count} words)
+Tone: {config.tone}
 
-请设计：
-1. 世界名称和类型
-2. 地理环境（主要地点、气候）
-3. 关键历史事件（塑造当今世界格局的事件）
-4. 文化习俗（社会规范、禁忌、节日等）
-5. 科技/魔法水平
-6. 如果有魔法或力量体系，请详细设计（包括名称、规则、进阶路径）
-7. 这个世界与真实世界不同的特殊规则
+Design the following:
+1. World name and type.
+2. Geography, including major locations and climate.
+3. Key historical events that shaped the world.
+4. Cultural practices such as social norms, taboos, and holidays.
+5. Level of technology or magic.
+6. Any magic or power system, including its name, rules, and progression.
+7. Special rules that distinguish this setting from the real world.
 
-注意：
-- 设定要服务于故事，不是为设定而设定
-- 要为目标读者（{config.target_readers}）的阅读体验优化
-- 留白：不要填满所有细节，给写作时留发挥空间"""
+Use details that serve the story and appeal to {config.target_readers}. Leave room to develop the world during drafting."""
 
         if config.taboo_content:
-            user_default += f"\n\n【避讳内容】请避免涉及：{', '.join(config.taboo_content)}"
+            user_default += f"\n\nContent to avoid: {', '.join(config.taboo_content)}"
 
         system, user = self.render_prompts(
             "build_world",
@@ -211,25 +263,23 @@ class ArchitectAgent(BaseAgent):
         world_summary = json.dumps(world.model_dump(), ensure_ascii=False, indent=2)
 
         system_default = self.build_system_prompt(
-            role="势力架构师",
-            expertise="设计有深度、有冲突、有层次的组织势力。每个势力应有明确的目标、"
-            "内部结构、资源掌控和与其他势力的关系。",
+            role="faction designer",
+            expertise="Design layered factions with clear goals, internal structures, resources, and relationships to other factions.",
         )
-        user_default = f"""基于以下世界观，设计 3-6 个主要势力/组织：
+        user_default = f"""Design 3–6 major factions or organizations for this setting.
 
-【世界观】
+World:
 {world_summary}
 
-【题材】{", ".join(config.genre)}
-【目标读者】{config.target_readers}
+Genre: {', '.join(config.genre)}
+Target readers: {config.target_readers}
 
-要求：
-1. 每个势力必须有：名称、类型（宗门/王国/公会/家族等）、目标、层级结构、资源、意识形态
-2. 势力之间应有明确的盟友/敌人/中立关系
-3. 势力设计要服务于核心冲突
-4. 至少有一个势力是主角所属或对立的
+1. Give each faction a name, type (sect, kingdom, guild, family, etc.), goals, hierarchy, resources, and ideology.
+2. Define alliances, rivalries, and neutral relationships.
+3. Make the factions relevant to the central conflicts.
+4. Include at least one faction the protagonist belongs to or opposes.
 
-请为每个势力生成唯一ID（格式：faction_xxx）"""
+Use a unique ID of the form faction_xxx for each faction."""
 
         system, user = self.render_prompts(
             "design_factions",
@@ -256,28 +306,28 @@ class ArchitectAgent(BaseAgent):
     async def create_style_contract(self, config: ProjectConfig) -> StyleContract:
         """Define the writing style contract for the novel."""
         system_default = self.build_system_prompt(
-            role="文风设计师",
-            expertise="为小说定义统一的文风契约。精通各类文学风格，能根据题材和目标读者精准定位最适合的文风参数。",
+            role="fiction style consultant",
+            expertise="Define a consistent style contract suited to the genre and intended audience.",
         )
-        user_default = f"""请为以下小说定义「文风契约」：
+        user_default = f"""Define a style contract for this novel.
 
-【灵感】{config.inspiration}
-【题材】{", ".join(config.genre)}
-【目标读者】{config.target_readers}
-【语调】{config.tone}
-【风格参考】{config.style_reference or "无特定参考"}
+Inspiration: {config.inspiration}
+Genre: {', '.join(config.genre)}
+Target readers: {config.target_readers}
+Tone: {config.tone}
+Style reference: {config.style_reference or 'No specific reference'}
 
-请确定：
-1. 整体语调（dark/light/gritty/whimsical 等）
-2. 叙事节奏偏好（fast/medium/slow）
-3. 句式风格（simple/ornate/varied/minimalist）
-4. 对话大致占比（0.0-1.0）
-5. 描写大致占比（0.0-1.0）
-6. 叙事距离（close沉浸式 / distant观察式 / omniscient全知）
-7. 应避免的陈词滥调或特定表达
-8. 推荐的写作技法
+Specify:
+1. Overall tone (dark, light, gritty, whimsical, etc.).
+2. Preferred pacing (fast, medium, or slow).
+3. Sentence style (simple, ornate, varied, or minimalist).
+4. Approximate dialogue proportion (0.0–1.0).
+5. Approximate description proportion (0.0–1.0).
+6. Narrative distance (close, distant, or omniscient).
+7. Clichés and other expressions to avoid.
+8. Recommended writing techniques.
 
-注意：这是{config.target_length.value}级别的小说，文风需要能支撑长篇写作。"""
+Choose a style sustainable for a {config.target_length.value} novel."""
 
         system, user = self.render_prompts(
             "create_style_contract",
@@ -287,7 +337,7 @@ class ArchitectAgent(BaseAgent):
             genre=", ".join(config.genre),
             target_readers=config.target_readers,
             tone=config.tone,
-            style_reference=config.style_reference or "无特定参考",
+            style_reference=config.style_reference or "No specific reference",
             target_length=config.target_length.value,
         )
 
@@ -317,19 +367,16 @@ class ArchitectAgent(BaseAgent):
     async def generate_themes(self, config: ProjectConfig, world: WorldBuilding) -> list[Theme]:
         """Generate thematic elements for the novel."""
         system_default = self.build_system_prompt(
-            role="主题设计师",
-            expertise="为小说提炼核心主题，并设计主题在人物、情节和世界观中的呈现方式。",
+            role="story theme designer",
+            expertise="Identify the novel's core themes and express them through its characters, plot, and world.",
         )
-        user_default = f"""基于以下信息，为小说提炼 3-5 个核心主题：
+        user_default = f"""Develop 3–5 core themes for this novel.
 
-【灵感】{config.inspiration}
-【题材】{", ".join(config.genre)}
-【世界观】{world.name} - {world.world_type}
+Inspiration: {config.inspiration}
+Genre: {', '.join(config.genre)}
+World: {world.name} – {world.world_type}
 
-每个主题需要：
-- 名称（如「救赎」「牺牲」「权力的代价」）
-- 描述（这个主题在故事中的含义）
-- 呈现方式（如何通过人物、情节、世界设定来表达）"""
+Give each theme a name (such as redemption, sacrifice, or the cost of power), explain its meaning in this story, and describe how it emerges through character, plot, and setting."""
 
         system, user = self.render_prompts(
             "generate_themes",
@@ -360,27 +407,23 @@ class ArchitectAgent(BaseAgent):
         factions_summary = json.dumps([f.model_dump() for f in factions], ensure_ascii=False, indent=2)
 
         system_default = self.build_system_prompt(
-            role="冲突架构师",
-            expertise="设计推动故事发展的核心冲突。理解不同类型冲突（人与人、人与社会、"
-            "人与自我、人与自然）的叙事功能。",
+            role="story conflict designer",
+            expertise="Design the central conflicts that drive the plot. Use interpersonal, social, internal, and environmental conflicts for their distinct narrative functions.",
         )
-        user_default = f"""基于以下信息，设计 3-5 个核心冲突：
+        user_default = f"""Design 3–5 central conflicts based on the following information.
 
-【灵感】{config.inspiration}
-【题材】{", ".join(config.genre)}
-【世界观】{world.name}
-【势力】{factions_summary}
+Inspiration: {config.inspiration}
+Genre: {', '.join(config.genre)}
+World: {world.name}
+Factions: {factions_summary}
 
-每个冲突需要：
-- 冲突类型（person_vs_person / person_vs_society / person_vs_self / person_vs_nature / person_vs_technology）
-- 描述
-- 涉及方（角色或势力）
-- 赌注（如果冲突不解决，会失去什么）
+For each conflict, provide:
+- Type (person_vs_person, person_vs_society, person_vs_self, person_vs_nature, or person_vs_technology).
+- Description.
+- Characters or factions involved.
+- Stakes if the conflict remains unresolved.
 
-要求：
-- 至少有一个核心冲突是 person_vs_self（内在冲突）
-- 至少有一个冲突涉及势力对抗
-- 冲突之间应有层次和关联"""
+Include at least one internal conflict (person_vs_self) and one conflict between factions. Connect the conflicts and distinguish the central ones from the supporting ones."""
 
         system, user = self.render_prompts(
             "define_conflicts",
@@ -413,15 +456,15 @@ class ArchitectAgent(BaseAgent):
     ) -> tuple[str, list[str]]:
         """Design the pleasure point model and narrative constraints."""
         system_default = self.build_system_prompt(
-            role="爽点架构师",
-            expertise="精通网文和小说的爽点设计。理解不同类型读者的阅读期待，能设计出令人欲罢不能的阅读体验节奏。",
+            role="narrative payoff designer",
+            expertise="Design satisfying payoffs and pace them to sustain different readers' interest across a web novel.",
         )
-        user_default = f"""为以下小说设计「爽点模型」和「叙事约束」：
+        user_default = f"""Design a payoff model and narrative constraints for this novel.
 
-【灵感】{config.inspiration}
-【题材】{", ".join(config.genre)}
-【目标读者】{config.target_readers}
-【世界观类型】{world.world_type}"""
+Inspiration: {config.inspiration}
+Genre: {', '.join(config.genre)}
+Target readers: {config.target_readers}
+World type: {world.world_type}"""
 
         system, user = self.render_prompts(
             "design_pleasure_points",

@@ -1,7 +1,7 @@
 """Topic Scout Agent — market research and topic selection for commercial web novels.
 
 Covers Steps 1-4 of the commercial writing pipeline:
-  1A/1B: Platform scanning (飞卢 + 番茄 real rankings)
+  1A/1B: Platform Scanning (Feilu + Fanqie real rankings)
   1C: Cross-platform analysis
   2: Benchmark book skeleton analysis
   3A/3B: 12 candidate topics → scoring → top 4 → manual select 2
@@ -10,7 +10,7 @@ Covers Steps 1-4 of the commercial writing pipeline:
 
 import logging
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from ..models.topic import (
     BenchmarkReport,
@@ -41,11 +41,11 @@ logger = logging.getLogger(__name__)
 class ScanReportOutput(BaseModel):
     """LLM output for platform scan analysis."""
 
-    platform: str = Field(default="", description="平台名称")
-    list_name: str = Field(default="", description="榜单名称")
-    date: str = Field(default="", description="扫描日期")
+    platform: str = Field(default="", description="Name of Platform", validation_alias=AliasChoices("platform", "平台名称"))
+    list_name: str = Field(default="", description="List Name", validation_alias=AliasChoices("list_name", "榜单名称"))
+    date: str = Field(default="", description="Scan Date", validation_alias=AliasChoices("date", "扫描日期"))
     entries: list[ScanEntry] = Field(default_factory=list)
-    summary: str = Field(default="", description="趋势总结")
+    summary: str = Field(default="", description="Trend Summary", validation_alias=AliasChoices("summary", "趋势总结"))
     scan_failed: bool = Field(default=False)
 
     @field_validator("entries", mode="before")
@@ -126,9 +126,9 @@ class TopicScoutAgent(BaseAgent):
 
     Usage:
         agent = TopicScoutAgent(scheduler)
-        # Step 1A: scan 飞卢
+        # Step 1A: scan Feilu
         feilu = await agent.scan_feilu(page_content=feilu_html)
-        # Step 1B: scan 番茄
+        # Step 1B: scan Fanqie
         fanqie = await agent.scan_fanqie(page_content=fanqie_html)
         # ... etc
     """
@@ -136,7 +136,7 @@ class TopicScoutAgent(BaseAgent):
     agent_type = "topic_scout"
 
     # ================================================================
-    # Step 1A: 飞卢真实扫榜
+    # Step 1A: Feilu Rankings
     # ================================================================
 
     async def scan_platform(self, platform: str, page_content: str | None = None) -> ScanReport:
@@ -146,7 +146,7 @@ class TopicScoutAgent(BaseAgent):
         + regex parsing on failure (needed for ModelScope which lacks JSON mode).
 
         Args:
-            platform: '飞卢' or '番茄'
+            platform: 'Feilu' or 'Fanqie'
             page_content: Raw HTML or text content from the platform page.
                           If None/empty, the scan fails gracefully.
 
@@ -158,48 +158,36 @@ class TopicScoutAgent(BaseAgent):
             return ScanReport(
                 platform=platform,
                 scan_failed=True,
-                summary="本次扫榜失败：未提供页面内容",
+                summary="Ranking scan failed because no page content was provided.",
             )
 
         system_prompt = self.build_system_prompt(
-            role="网文扫榜编辑" if platform == "飞卢" else "网文平台分析编辑",
+            role="web fiction rankings editor" if platform == "Feilu" else "web fiction market analyst",
             expertise=(
-                f"你熟悉{platform}小说平台的榜单结构、题材风向和读者口味。"
-                f"你能从真实榜单数据中精确提取每本书的排名、书名、题材、爽点和核心设定。"
-                f"你的分析必须基于提供的真实页面数据，不允许泛泛而谈或编造信息。"
+                f"You understand {platform}'s rankings, genre trends, and readers. "
+                "Extract rank, title, genre, payoff, and premise from the supplied ranking data. "
+                "Ground the analysis in the supplied page."
             ),
         )
 
-        user_prompt = f"""你现在是{platform}平台的专业分析编辑。请基于下方提供的{platform}真实榜单页面内容，完成逐本书的分析。
+        user_prompt = f"""Analyze the {platform} rankings below, one book at a time.
 
-【平台页面内容】
+Ranking page:
 {page_content[:15000]}
 
-⚠️ 重要：必须逐本提取！不要只写总结！entries 数组里每本书必须是一个独立对象！
-
-步骤如下：
-
-1. 从页面中逐本提取真实书名，至少提取10本。找不到10本就如实说明原因。
-
-2. 每本书在 entries 数组中作为一个独立对象。页面中可直接提取的字段（书名、排名）必须真实提取，不能编造。页面中不直接显示的字段（如题材标签、金手指、爽点模式等），请根据以下规则**合理推断**：
-   - 根据书名中的关键词推断题材标签（如"战神"→都市、"修仙"→仙侠、"系统"→游戏异界）
-   - 根据书名结构推断书名吸睛点（如身份反差、钩子悬念、金手指展示等）
-   - 根据题材惯例推断金手指类型和爽点循环模式
-   - 推断结果标注在对应字段中即可，无需特别说明
-
-3. 每本书必须包含以下字段：
-   - rank: 排名（数字，必须从页面提取）
-   - title: 书名（必须从页面真实提取）
-   - genre: 题材标签（根据书名推断）
-   - title_appeal: 书名为什么吸睛（根据书名风格推断）
-   - one_liner: 一句话卖点（根据书名+题材惯例推断）
-   - golden_finger: 金手指/核心设定（根据题材惯例推断）
-   - opening_pressure: 开篇压力设计（根据题材惯例推断）
-   - pleasure_loop: 爽点循环模式（根据题材惯例推断）
-
-4. 在 summary 字段中总结题材趋势。
-
-5. 如果页面内容确实连书名都无法提取，将 scan_failed 设为 true。
+1. Extract at least ten real titles. If fewer are available, explain why.
+2. Return a separate object for each book in entries. Copy titles and ranks exactly from the page. Infer other fields from title keywords, title structure, and genre conventions when needed.
+3. Include these fields for each book:
+   - rank: Numeric rank from the page
+   - title: Exact title from the page
+   - genre: Genre inferred from the title
+   - title_appeal: What makes the title compelling, such as a contrast, a mystery, or a distinctive advantage
+   - one_liner: The hook in one line, inferred from title and genre
+   - golden_finger: The protagonist's signature advantage or the core premise
+   - opening_pressure: Conflict or pressure at the start
+   - pleasure_loop: Recurring source of reader satisfaction
+4. Describe genre trends in summary.
+5. Set scan_failed to true if you cannot extract any titles.
 """
 
         # Attempt 1: structured generation
@@ -232,10 +220,11 @@ class TopicScoutAgent(BaseAgent):
                 user_prompt
                 + """
 
-请用以下纯文本格式逐本输出（每本书一行）：
-#排名 | 书名 | 题材标签 | 书名吸睛点 | 一句话卖点 | 金手指 | 开篇压力 | 爽点模式
+Return plain text with a line per book:
+#Rank | Title | Genre | Title appeal | One-line hook | Signature advantage | Opening pressure | Payoff loop
 
-然后在最后用"=== 趋势总结 ==="开头，写2-4句趋势总结。
+Finish with this heading and two to four sentences describing the trends:
+=== Trend Summary ===
 """
             )
             text_result = await self.generate(
@@ -249,12 +238,12 @@ class TopicScoutAgent(BaseAgent):
             if entries:
                 import re
 
-                summary_match = re.search(r"===?\s*趋势总结\s*===?\s*\n(.+)", text, re.DOTALL)
-                summary = summary_match.group(1).strip()[:200] if summary_match else f"{platform}榜单分析完成"
+                summary_match = re.search(r"===?\s*(?:Trend Summary|趋势总结)\s*===?\s*\n(.+)", text, re.DOTALL | re.IGNORECASE)
+                summary = summary_match.group(1).strip()[:200] if summary_match else f"{platform} ranking analysis complete"
                 logger.info(f"{platform} text fallback: parsed {len(entries)} entries")
                 return ScanReport(
                     platform=platform,
-                    list_name=f"{platform}榜单",
+                    list_name=f"{platform} rankings",
                     date="",
                     entries=entries,
                     summary=summary,
@@ -263,7 +252,7 @@ class TopicScoutAgent(BaseAgent):
         except Exception as e2:
             logger.error(f"{platform} text fallback also failed: {e2}")
 
-        return ScanReport(platform=platform, scan_failed=True, summary="本次扫榜失败：无法从页面提取书名")
+        return ScanReport(platform=platform, scan_failed=True, summary="No titles could be extracted from the ranking page.")
 
     @staticmethod
     def _parse_text_scan_entries(text: str) -> list[ScanEntry]:
@@ -300,11 +289,11 @@ class TopicScoutAgent(BaseAgent):
         return entries
 
     async def scan_feilu(self, page_content: str | None = None) -> ScanReport:
-        """Step 1A: Scan 飞卢小说 real rankings."""
-        return await self.scan_platform("飞卢", page_content)
+        """Scan the Feilu novel rankings."""
+        return await self.scan_platform("Feilu", page_content)
 
     async def scan_fanqie(self, page_content: str | None = None) -> ScanReport:
-        """Step 1B: Scan 番茄小说 real rankings.
+        """Scan the Fanqie novel rankings.
 
         For Fanqie, the scraper already produces clean structured text.
         We use the direct parser to extract clean book entries (no LLM needed
@@ -313,9 +302,9 @@ class TopicScoutAgent(BaseAgent):
         if not page_content or not page_content.strip():
             logger.warning("Fanqie scan: no page content provided → scan failed")
             return ScanReport(
-                platform="番茄",
+                platform="Fanqie",
                 scan_failed=True,
-                summary="本次扫榜失败：未提供页面内容",
+                summary="Ranking scan failed because no page content was provided.",
             )
 
         # Step 1: Direct parse to get clean book titles + abstracts
@@ -326,10 +315,10 @@ class TopicScoutAgent(BaseAgent):
             # Step 2: Enrich with LLM analysis (genre, golden_finger, trend summary)
             enriched, trend_summary = await self._enrich_fanqie_with_llm(page_content, direct_entries)
             if enriched:
-                summary = trend_summary or f"番茄榜单：共 {len(enriched)} 本上榜书籍，已完成题材分析"
+                summary = trend_summary or f"Fanqie rankings: analyzed {len(enriched)} books."
                 return ScanReport(
-                    platform="番茄",
-                    list_name="综合榜单（新书榜+阅读榜，男频+女频）",
+                    platform="Fanqie",
+                    list_name="Combined rankings (new and most read, across both readerships)",
                     date="",
                     entries=enriched,
                     summary=summary,
@@ -338,17 +327,17 @@ class TopicScoutAgent(BaseAgent):
 
             # LLM enrichment failed — return direct-parsed entries
             return ScanReport(
-                platform="番茄",
-                list_name="综合榜单（新书榜+阅读榜，男频+女频）",
+                platform="Fanqie",
+                list_name="Combined rankings (new and most read, across both readerships)",
                 date="",
                 entries=direct_entries,
-                summary=f"番茄榜单：共 {len(direct_entries)} 本上榜书籍（书名+简介，题材分析未完成）",
+                summary=f"Fanqie rankings: extracted {len(direct_entries)} titles and synopses. Genre analysis is unavailable.",
                 scan_failed=False,
             )
 
         # Direct parsing failed — fall back to full LLM scan (like Feilu)
         logger.info("Fanqie direct parse failed, falling back to LLM scan")
-        return await self.scan_platform("番茄", page_content)
+        return await self.scan_platform("Fanqie", page_content)
 
     async def _enrich_fanqie_with_llm(
         self, page_content: str, direct_entries: list[ScanEntry]
@@ -359,11 +348,9 @@ class TopicScoutAgent(BaseAgent):
         with all API providers. Parses the result with regex.
         """
         system_prompt = self.build_system_prompt(
-            role="网文平台分析编辑",
+            role="web fiction market analyst",
             expertise=(
-                "你熟悉番茄小说平台的榜单结构、题材风向和读者口味。"
-                "你能从榜单数据中识别每本书的题材标签、书名吸睛点、金手指类型、"
-                "开篇压力设计和爽点循环模式，并总结出榜单的整体趋势。"
+                "Identify genres, title appeal, signature advantages, opening conflict, and payoff patterns in the Fanqie rankings."
             ),
         )
 
@@ -371,23 +358,22 @@ class TopicScoutAgent(BaseAgent):
             f"#{e.rank} 《{e.title}》" + (f" — {e.one_liner[:80]}" if e.one_liner else "") for e in direct_entries[:15]
         )
 
-        user_prompt = f"""请分析以下番茄小说榜单，为每本书标注题材和核心设定，并总结趋势。
+        user_prompt = f"""Analyze the following Fanqie rankings. Identify each book's genre and core premise, then summarize the overall trends.
 
-【榜单数据】
+Ranking data:
 {book_list}
 
-请按以下格式输出：
+Use this format:
 
-=== 趋势总结 ===
-（2-4句话总结榜单整体趋势）
+=== Trend Summary ===
+Write two to four sentences on the overall trends.
 
-=== 逐本分析 ===
-#排名 | 题材 | 书名吸睛点 | 金手指类型 | 开篇压力 | 爽点模式
-#1 | 都市 | 反差身份 | 战神归来 | 被退婚羞辱 | 打脸逆袭
-#2 | 古言 | ... | ... | ... | ...
-（每本书一行，保持原排名和书名）
+=== Book-by-Book Analysis ===
+#Rank | Genre | Title appeal | Signature advantage | Opening pressure | Payoff loop
+#1 | Urban fiction | Contrasting identities | Returning war hero | A broken engagement | A comeback that proves doubters wrong
+#2 | Historical romance | ... | ... | ... | ...
 
-请确保每本书都有一行分析。"""
+Keep the original ranks and titles. Give each book exactly one line."""
 
         try:
             result = await self.generate(
@@ -400,7 +386,7 @@ class TopicScoutAgent(BaseAgent):
             # Parse trend summary
             import re
 
-            summary_match = re.search(r"===?\s*趋势总结\s*===?\s*\n(.+?)(?:\n===|\n\n===|\Z)", text, re.DOTALL)
+            summary_match = re.search(r"===?\s*(?:Trend Summary|趋势总结)\s*===?\s*\n(.+?)(?:\n===|\n\n===|\Z)", text, re.DOTALL | re.IGNORECASE)
             summary = summary_match.group(1).strip() if summary_match else ""
 
             # Parse per-book analysis
@@ -448,12 +434,12 @@ class TopicScoutAgent(BaseAgent):
         """Parse Fanqie scraper output directly into ScanEntry list.
 
         The scraper produces formatted text like:
-            ===== 番茄小说榜单数据（共X本，涵盖...）=====
+            ===== Fanqie's list data (X copies covering...) =====
 
-            #1 《书名》 作者：作者名
-                简介：abstract text
-            #2 《书名》 作者：作者名
-                简介：abstract text
+            #1 《Book Title》 Author: Author Name
+                Synopsis: synopsis text
+            #2 《Book Title》 Author: Author Name
+                Synopsis: synopsis text
 
         Multi-line abstracts are handled (new entries start with #N pattern).
         """
@@ -504,15 +490,15 @@ class TopicScoutAgent(BaseAgent):
         title_match = re.search(r"《(.+?)》", first_line)
         title = title_match.group(1).strip() if title_match else ""
 
-        # Extract author from 作者：...
-        author_match = re.search(r"作者[：:]\s*(.+?)$", first_line)
+        # Extractor from:...
+        author_match = re.search(r"(?:Author|作者)[：:]\s*(.+?)$", first_line, re.IGNORECASE)
         author = author_match.group(1).strip() if author_match else ""
 
         # Extract abstract from subsequent lines
         abstract = ""
         for line in lines[1:]:
-            # Remove 简介：prefix
-            clean = re.sub(r"^简介[：:]\s*", "", line)
+            # Remove Profile: Prefix
+            clean = re.sub(r"^(?:Synopsis|简介)[：:]\s*", "", line, flags=re.IGNORECASE)
             if clean:
                 abstract += clean
 
@@ -524,14 +510,14 @@ class TopicScoutAgent(BaseAgent):
             title=title,
             genre="",
             title_appeal="",
-            one_liner=abstract[:200] if abstract else f"作者：{author}" if author else "",
+            one_liner=abstract[:200] if abstract else f"Author: {author}" if author else "",
             golden_finger="",
             opening_pressure="",
             pleasure_loop="",
         )
 
     # ================================================================
-    # Step 1C: 双榜交叉分析
+    # Step 1C: Cross-platform analysis
     # ================================================================
 
     async def cross_platform_analysis(self, feilu: ScanReport | None, fanqie: ScanReport | None) -> CrossPlatformReport:
@@ -550,43 +536,39 @@ class TopicScoutAgent(BaseAgent):
             logger.warning("Cross-platform analysis: no valid scan data from either platform")
             return CrossPlatformReport()
 
-        feilu_text = self._format_scan_for_prompt(feilu) if feilu else "[无飞卢数据]"
-        fanqie_text = self._format_scan_for_prompt(fanqie) if fanqie else "[无番茄数据]"
+        feilu_text = self._format_scan_for_prompt(feilu) if feilu else "[no Feilu data]"
+        fanqie_text = self._format_scan_for_prompt(fanqie) if fanqie else "[No Fanqie data available]"
 
         # Adjust role and prompt based on data availability
         if feilu_ok and fanqie_ok:
-            role = "网文双平台策略分析师"
+            role = "cross-platform web fiction analyst"
             expertise = (
-                "你精通飞卢和番茄两个平台的内容生态差异。"
-                "你能从榜单数据中识别出跨平台的热门题材共性，也能发现每个平台的独特口味。"
-                "你的分析基于真实数据，不凭空猜测。"
+                "Compare genre trends and reader preferences across Feilu and Fanqie using the supplied rankings."
             )
-            prompt_intro = '请同时参考以下两份真实扫榜数据，做"双榜交叉结论"。'
+            prompt_intro = 'Use the supplied rankings to make a cross-platform comparison.'
         else:
-            role = "网文平台策略分析师"
-            platform_name = "飞卢" if feilu_ok else "番茄"
+            role = "web fiction market analyst"
+            platform_name = "Feilu" if feilu_ok else "Fanqie"
             expertise = (
-                f"你熟悉{platform_name}平台的内容生态和题材风向。"
-                f"你能从榜单数据中识别热门题材并推荐适合继续深挖的方向。"
-                f"你的分析基于真实数据，不凭空猜测。"
+                f"Identify popular genres and promising directions using the {platform_name} rankings."
             )
-            prompt_intro = f"请基于以下{platform_name}真实扫榜数据，分析热门题材并推荐创作方向。"
+            prompt_intro = f"Identify popular genres and recommend story directions based on the following {platform_name} rankings."
 
         system_prompt = self.build_system_prompt(role=role, expertise=expertise)
 
         user_prompt = f"""{prompt_intro}
 
-=== A. 飞卢扫榜数据 ===
+=== A. Feilu Rankings ===
 {feilu_text}
 
-=== B. 番茄扫榜数据 ===
+=== B. Fanqie Rankings ===
 {fanqie_text}
 
-请输出表格（每个题材一行）：
+Use one row per genre:
 
-| 题材名 | 飞卢是否有明显热度 | 番茄是否有对应读者基础 | 飞卢吸人的点 | 到番茄需要调整什么 | 风险点 | 推荐等级 |
+| Genre | Popular on Feilu? | Established Fanqie audience? | Feilu reader appeal | Adaptations for Fanqie | Risks | Recommendation |
 
-最后保留3-5个适合继续做对标拆解的方向（放在 selected_directions 字段中）。"""
+Choose 3–5 promising directions for further benchmark analysis and put them in selected_directions."""
 
         # Attempt 1: structured generation
         try:
@@ -611,10 +593,10 @@ class TopicScoutAgent(BaseAgent):
                 user_prompt
                 + """
 
-请用以下格式输出推荐的创作方向（每行一个）：
-推荐方向：题材名1
-推荐方向：题材名2
-推荐方向：题材名3
+List recommended directions, one per line, using this format:
+Recommended Direction: Genre 1
+Recommended Direction: Genre 2
+Recommended Direction: Genre 3
 """
             )
             text_result = await self.generate(
@@ -625,7 +607,7 @@ class TopicScoutAgent(BaseAgent):
             text = text_result.content if hasattr(text_result, "content") else str(text_result)
             import re
 
-            directions = re.findall(r"推荐方向[：:]\s*(.+?)(?:\n|$)", text)
+            directions = re.findall(r"(?:Recommended Direction|推荐方向)[：:]\s*(.+?)(?:\n|$)", text, re.IGNORECASE)
             directions = [d.strip() for d in directions if d.strip()]
             if directions:
                 logger.info(f"Cross-platform text fallback: {len(directions)} directions")
@@ -656,7 +638,7 @@ class TopicScoutAgent(BaseAgent):
         return CrossPlatformReport()
 
     # ================================================================
-    # Step 2: 对标书骨架拆解
+    # Step 2: Benchmark book analysis
     # ================================================================
 
     async def analyze_benchmarks(
@@ -672,30 +654,29 @@ class TopicScoutAgent(BaseAgent):
         """
         context = ""
         if feilu_scan:
-            context += f"\n飞卢参考：{self._format_scan_for_prompt(feilu_scan)}"
+            context += f"\n Feilu:{self._format_scan_for_prompt(feilu_scan)}"
         if fanqie_scan:
-            context += f"\n番茄参考：{self._format_scan_for_prompt(fanqie_scan)}"
+            context += f"\n Fanqie:{self._format_scan_for_prompt(fanqie_scan)}"
 
         system_prompt = self.build_system_prompt(
-            role="网文结构分析师",
+            role="web fiction story analyst",
             expertise=(
-                "你擅长拆解网文的结构骨架——不是复述正文，不是抄内容，而是提取"
-                "一本书的核心结构要素：开局、金手指、压力设计、爽点循环、事件启动方式。"
-                "你能识别哪些结构元素值得借鉴，哪些必须替换以避免高仿抄袭。"
+                "Identify the structural patterns behind a book's opening, signature advantage, pressure, and payoff loop. "
+                "Distinguish techniques that can be adapted from story details that require an original approach."
             ),
         )
 
-        user_prompt = f"""请从以下保留的题材方向里，每个方向选2本最有代表性的对标书，总共拆6-10本。
+        user_prompt = f"""Choose the two most representative benchmark books for each direction, for 6–10 books total.
 
-【保留的题材方向】
+Selected directions:
 {chr(10).join(f"- {d}" for d in directions)}
 {context}
 
-注意：不是复述正文，不是抄内容，而是拆骨架。请按以下字段输出每本书：
+Extract structural patterns without reproducing the books' plots or prose. Analyze each book using these fields:
 
-| 书名 | 题材 | 书名吸量点 | 简介承诺的爽点 | 主角开局处境 | 金手指或核心底牌 | 开篇压力 | 首个小事件如何启动 | 爽点循环 | 哪些元素值得借 | 哪些元素必须换掉避免高仿 |
+| Title | Genre | Title appeal | Payoff promised by synopsis | Protagonist's starting position | Signature advantage or hidden strength | Opening pressure | How the first arc starts | Payoff loop | Elements worth adapting | Elements to replace for originality |
 
-最后总结：每个题材最值得借的结构骨架是什么。
+Summarize the strongest structural pattern for each genre.
 """
 
         try:
@@ -714,7 +695,7 @@ class TopicScoutAgent(BaseAgent):
             return BenchmarkReport()
 
     # ================================================================
-    # Step 3A: 生成12个候选题材
+    # Step 3A: Generate 12 candidates
     # ================================================================
 
     async def generate_topics(
@@ -731,37 +712,33 @@ class TopicScoutAgent(BaseAgent):
         bench_text = self._format_benchmarks(benchmarks)
 
         system_prompt = self.build_system_prompt(
-            role="网文创意策划师",
+            role="web fiction concept designer",
             expertise=(
-                "你擅长基于市场数据和对标分析，批量生成有商业潜力的网文题材。"
-                "你的创意方法：借骨架不抄内容——人物、开局、事件、金手指、核心爽点全部替换。"
-                "每个题材都要适合番茄免费文平台，并且能让视频观众一眼听懂。"
+                "Develop commercially viable web fiction concepts from market research. "
+                "Use original characters, openings, events, advantages, and payoffs that suit Fanqie and are easy to explain in a short video."
             ),
         )
 
-        base_prompt = f"""请基于双榜交叉结论 + 对标书骨架，生成候选题材。
+        base_prompt = f"""Generate candidate concepts using the ranking analysis and benchmark books.
 
-【双榜交叉结论】
+Cross-platform analysis:
 {cross_text}
 
-【对标书骨架参考】
+Benchmark structures:
 {bench_text}
 
-要求：
-1. 不抄正文，只借骨架。每个题材必须换：人物、开局、事件、金手指、核心爽点。
-2. 每个题材都要适合发在番茄小说，且能让视频观众一眼听懂。
-3. 每个题材都要能写出10章左右的首个小事件闭环。
+Use structural inspiration from the benchmarks and create original characters, openings, events, signature advantages, and payoffs. Each concept should suit Fanqie readers, be easy to explain in a short video, and support a complete opening arc of roughly ten chapters.
 
-请为每个候选题材输出以下字段：
-- genre_name: 题材名
-- one_line_setting: 一句话设定
-- golden_finger: 核心金手指
-- chapter1_conflict: 第一章冲突
-- first_event_direction: 首个小事件闭环方向
-- first_pleasure_wave: 第一波爽点
+For each concept, include:
+- genre_name: Genre name
+- one_line_setting: Premise in one sentence
+- golden_finger: Protagonist's signature advantage
+- chapter1_conflict: First-chapter conflict
+- first_event_direction: Direction of the opening arc
+- first_pleasure_wave: First major payoff
 - tomato_fit: high/medium/low
 - video_potential: high/medium/low
-- risk: 风险点"""
+- risk: Risks to consider"""
 
         all_topics = []
         # Generate in 3 batches of 4 to reduce per-call complexity
@@ -769,7 +746,7 @@ class TopicScoutAgent(BaseAgent):
             batch_num = batch_idx + 1
             batch_prompt = (
                 base_prompt
-                + f"\n\n请生成第{batch_num}批，恰好4个候选题材（题材{batch_idx * 4 + 1}-{batch_idx * 4 + 4}）。"
+                + f"\n\nGenerate batch {batch_num} with exactly four concepts (numbers {batch_idx * 4 + 1}–{batch_idx * 4 + 4})."
             )
 
             batch_topics = await self._generate_topic_batch(
@@ -804,7 +781,7 @@ class TopicScoutAgent(BaseAgent):
         try:
             text_result = await self.generate(
                 system_prompt=system_prompt
-                + "\n\n请以markdown格式输出，每个题材用## 标题分隔，字段用- 字段名: 值的形式列出。",
+                + "\n\nUse a Markdown ## heading for each concept and a list of fields in the form - field_name: value.",
                 user_prompt=user_prompt,
                 temperature_override=0.8,
             )
@@ -862,7 +839,7 @@ class TopicScoutAgent(BaseAgent):
         return topics
 
     # ================================================================
-    # Step 3B: 评分收缩
+    # Step 3B: Score candidate concepts
     # ================================================================
 
     async def score_topics(self, candidates: CandidateTopicsOutput) -> TopicScoringReport:
@@ -874,34 +851,28 @@ class TopicScoutAgent(BaseAgent):
         topics_text = self._format_candidates(candidates)
 
         system_prompt = self.build_system_prompt(
-            role="网文选题评估师",
+            role="web fiction concept evaluator",
             expertise=(
-                "你擅长从商业可行性、创作稳定性和传播潜力三个维度评估网文题材。"
-                "你的评分客观、有区分度，能指出每个题材的具体优劣。"
-                "你不会替作者做最终决定，而是提供清晰的评分数据和建议。"
+                "Rate commercial fit, creative stability, and promotional potential. Provide scores and concrete trade-offs so the author can decide."
             ),
         )
 
-        user_prompt = f"""请对这12个候选题材做评分，但不要替我最终决定。
+        user_prompt = f"""Score these 12 candidate concepts so the author can make the final decision.
 
-【候选题材】
+Candidates:
 {topics_text}
 
-评分维度（每项1-10分）：
+Score each criterion from 1 to 10:
+1. Title appeal: Does the concept lend itself to a title readers will click?
+2. Opening pressure: Does the first chapter introduce a strong conflict quickly?
+3. Opening arc clarity: Can the first 10 chapters tell a complete story arc?
+4. Signature advantage: Can the central premise sustain recurring payoffs?
+5. Fanqie fit: Does the story suit readers of free-to-read fiction on Fanqie?
+6. AI writing stability: Can an AI continue the story while respecting the premise?
+7. Video potential: Can a short promotional video explain and sell the concept?
+8. Continuity risk: How likely is the premise to break down in a long novel? Use low scores for high risk.
 
-1. 书名吸量潜力 — 题材本身能否产生高点击的书名
-2. 第一章开篇压力 — 开局冲突是否足够强、足够快
-3. 首个小事件闭环是否清楚 — 10章内的完整故事线是否清晰
-4. 金手指是否能持续制造爽点 — 核心设定的爽点续航力
-5. 番茄适配度 — 是否匹配番茄免费文的读者口味
-6. AI辅助稳定性 — 让AI续写时是否容易偏离/崩设定
-7. 视频表现力 — 做成推广视频时是否容易讲清楚、吸引人
-8. 吃书/崩设定风险 — 长期写作中设定自相矛盾的概率（分数越低越好，即低分=高风险）
-
-请输出：
-- 完整的评分表（每项打分+综合得分）
-- 推荐前4名（按综合得分排序）
-- 每个人工选择建议：每个题材适合什么取舍
+Provide all eight scores and the overall score for each concept. Rank the top four by overall score and explain the trade-offs for each choice.
 """
 
         # Attempt 1: structured generation
@@ -932,16 +903,16 @@ class TopicScoutAgent(BaseAgent):
                 user_prompt
                 + """
 
-请用以下格式输出结果：
+Use this format:
 
-推荐前4名：
-1. 题材名1
-2. 题材名2
-3. 题材名3
-4. 题材名4
+Top 4 Recommendations:
+1. Genre 1
+2. Genre 2
+3. Genre 3
+4. Genre 4
 
-评分表：
-#排名 | 题材名 | 书名吸量 | 开篇压力 | 事件闭环 | 金手指续航 | 番茄适配 | AI稳定 | 视频表现 | 崩设定风险 | 综合得分
+Scores:
+#Rank | Genre | Title appeal | Opening pressure | Arc clarity | Signature advantage | Fanqie fit | AI stability | Video potential | Continuity risk | Overall score
 """
             )
             text_result = await self.generate(
@@ -953,7 +924,7 @@ class TopicScoutAgent(BaseAgent):
 
             # Parse top 4 from text
             top_4 = []
-            top_match = re.search(r"推荐前4名[：:]?\s*\n(.+?)(?:\n\n|\n(?!\d+\.|\s*\d+\s))", text, re.DOTALL)
+            top_match = re.search(r"(?:Top 4 Recommendations|推荐前4名)[：:]?\s*\n((?:[ \t]*\d+\.[^\n]+(?:\n|$))+)", text, re.IGNORECASE)
             if top_match:
                 top_4 = re.findall(r"\d+\.\s*(.+?)(?:\n|$)", top_match.group(1))
                 top_4 = [t.strip() for t in top_4 if t.strip()]
@@ -979,7 +950,7 @@ class TopicScoutAgent(BaseAgent):
         return TopicScoringReport()
 
     # ================================================================
-    # Step 4A: 书名与简介前置测试
+    # Step 4A: Generate and assess titles and synopses
     # ================================================================
 
     async def generate_titles(self, genre_name: str, topic: CandidateTopic) -> TitleSynopsisReport:
@@ -989,28 +960,27 @@ class TopicScoutAgent(BaseAgent):
         for reliability across all LLM providers including ModelScope.
         """
         system_prompt = self.build_system_prompt(
-            role="网文包装策划师",
+            role="web fiction marketing editor",
             expertise=(
-                "你擅长为网文设计高点击率的书名和简介。你熟悉番茄免费文的"
-                "书名风格（直白、有冲突感、一眼看懂）和简介写法（快速建立期待、"
-                "明确爽点、留钩子）。你也了解什么样的书名和简介适合做短视频推广。"
+                "Write clear, conflict-driven titles and concise synopses for free-to-read web fiction. "
+                "Set expectations quickly, promise a payoff, and leave a hook suitable for short-form video promotion."
             ),
         )
 
-        user_prompt = f"""现在针对以下题材，设计书名和简介。
+        user_prompt = f"""Write a title and synopsis for this concept.
 
-【题材信息】
-- 题材名：{genre_name}
-- 一句话设定：{topic.one_line_setting}
-- 核心金手指：{topic.golden_finger}
-- 第一章冲突：{topic.chapter1_conflict}
-- 首个小事件闭环方向：{topic.first_event_direction}
-- 第一波爽点：{topic.first_pleasure_wave}
+Concept:
+- Genre: {genre_name}
+- One-line premise: {topic.one_line_setting}
+- Signature advantage: {topic.golden_finger}
+- Chapter 1 conflict: {topic.chapter1_conflict}
+- Opening arc direction: {topic.first_event_direction}
+- First payoff: {topic.first_pleasure_wave}
 
-请按以下格式直接输出：
+Use this format:
 
-最终书名：《书名》
-简介：2-4句话的简介，80-150字，快速建立期待、明确爽点、留钩子
+Final Title: <title>
+Synopsis: <2–4 sentences and 80–150 words that set expectations quickly, promise a payoff, and leave a hook>
 """
 
         # Attempt 1: structured generation (fast path for providers with JSON mode)
@@ -1044,12 +1014,12 @@ class TopicScoutAgent(BaseAgent):
             text = text_result.content if hasattr(text_result, "content") else str(text_result)
             import re
 
-            # Parse: 最终书名：《XXX》 or 书名：XXX
-            title_match = re.search(r"(?:最终)?书名[：:]\s*[《]?(.+?)[》]?(?:\n|$)", text)
+            # Parse: Final book name: XXX or XXX
+            title_match = re.search(r"(?:(?:Final )?Title|(?:最终)?书名)[：:]\s*[《]?(.+?)[》]?(?:\n|$)", text, re.IGNORECASE)
             final_title = title_match.group(1).strip() if title_match else ""
 
-            # Parse: 简介：XXX
-            syn_match = re.search(r"简介[：:]\s*(.+?)(?:\n\n|\Z)", text, re.DOTALL)
+            # Parse: Brief: XXX
+            syn_match = re.search(r"(?:Synopsis|简介)[：:]\s*(.+?)(?:\n\n|\Z)", text, re.DOTALL | re.IGNORECASE)
             final_synopsis = syn_match.group(1).strip() if syn_match else ""
 
             # Fallback: use first line as title if no match
@@ -1068,7 +1038,7 @@ class TopicScoutAgent(BaseAgent):
                 return TitleSynopsisReport(
                     genre_name=genre_name,
                     final_title=final_title,
-                    final_synopsis=final_synopsis or topic.one_line_setting or f"一部{genre_name}题材的精彩小说",
+                    final_synopsis=final_synopsis or topic.one_line_setting or f"A novel in the {genre_name} genre.",
                 )
         except Exception as e2:
             logger.error(f"Title text fallback also failed: {e2}")
@@ -1078,11 +1048,11 @@ class TopicScoutAgent(BaseAgent):
         return TitleSynopsisReport(
             genre_name=genre_name,
             final_title=fallback_title[:50],
-            final_synopsis=f"一部关于{genre_name}的精彩小说。{topic.golden_finger or '金手指'}，{topic.chapter1_conflict or '开局冲突'}，{topic.first_pleasure_wave or '爽点不断'}。",
+            final_synopsis=f"A {genre_name} novel featuring {topic.golden_finger or 'a signature advantage'}, {topic.chapter1_conflict or 'an immediate conflict'}, and {topic.first_pleasure_wave or 'recurring payoffs'}.",
         )
 
     # ================================================================
-    # Step 5: 10章小事件闭环大纲
+    # Step 5: 10 chapters self-contained opening arc outline
     # ================================================================
 
     async def plan_mini_arc(
@@ -1100,50 +1070,36 @@ class TopicScoutAgent(BaseAgent):
         + regex parsing on failure (needed for ModelScope which lacks JSON mode).
         """
         system_prompt = self.build_system_prompt(
-            role="网文结构设计师",
+            role="web fiction outline designer",
             expertise=(
-                "你擅长设计紧凑的10章小事件闭环。你理解网文的节奏规律："
-                "第1章给压力 → 第2-3章展示规则和底牌 → 第4-7章升级阻碍 → "
-                "第8-9章布局反击 → 第10章释放爽点、收束事件、抛新钩子。"
-                "每章2000-2100字，10章总计约2万字。"
+                "Plan a compact ten-chapter arc that builds from opening pressure to the protagonist's response and payoff. "
+                "Resolve the first conflict and end with a hook for the next arc."
             ),
         )
 
-        user_prompt = f"""请基于以下题材信息，设计"10章小事件闭环大纲"。
+        user_prompt = f"""Design a complete 10-chapter opening arc for this concept.
 
-【题材信息】
-- 题材名：{genre_name}
-- 一句话设定：{topic.one_line_setting}
-- 核心金手指：{topic.golden_finger}
-- 第一章冲突：{topic.chapter1_conflict}
-- 首个小事件闭环方向：{topic.first_event_direction}
-- 第一波爽点：{topic.first_pleasure_wave}
+Concept:
+- Genre: {genre_name}
+- One-line premise: {topic.one_line_setting}
+- Signature advantage: {topic.golden_finger}
+- Chapter 1 conflict: {topic.chapter1_conflict}
+- Opening arc direction: {topic.first_event_direction}
+- First payoff: {topic.first_pleasure_wave}
 
-【书名和简介】
-- 书名：{title_report.final_title}
-- 简介：{title_report.final_synopsis}
+Title: {title_report.final_title}
+Synopsis: {title_report.final_synopsis}
 
-每章按2000-2100字规划，10章总计约20,000-21,000字。首个小事件必须完整闭环，不能只是开头。
+Plan 2,000–2,100 words per chapter and about 20,000–21,000 words in total. Resolve the opening conflict within the arc.
 
-请按以下结构输出每章：
+For each chapter, describe the goal, conflict, payoff, new information, character change, foreshadowing, and ending hook.
 
-| 字段 | 说明 |
-|------|------|
-| 章数 | 第1-10章 |
-| 本章目标 | 这一章要达成什么 |
-| 本章冲突 | 核心矛盾是什么 |
-| 本章爽点 | 读者的满足感来自哪里 |
-| 新增信息 | 读者获得什么新认知 |
-| 人物状态变化 | 主角/配角的情感或能力变化 |
-| 伏笔推进 | 埋下或推进了什么伏笔 |
-| 结尾钩子 | 如何让读者点下一章 |
-
-节奏要求：
-- 第1章：给开局压力（冲突立即出现）
-- 第2-3章：展示世界观规则和主角底牌
-- 第4-7章：升级阻碍和冲突
-- 第8-9章：完成布局与反击
-- 第10章：释放爽点、收束小事件，并抛出下一事件钩子
+Pacing:
+- Chapter 1: Establish immediate pressure.
+- Chapters 2–3: Show the world's rules and the protagonist's advantage.
+- Chapters 4–7: Escalate obstacles and conflict.
+- Chapters 8–9: Put the protagonist's response into motion.
+- Chapter 10: Deliver the payoff, resolve the arc, and set up the next one.
 """
 
         # Attempt 1: structured generation
@@ -1182,24 +1138,24 @@ class TopicScoutAgent(BaseAgent):
                 user_prompt
                 + """
 
-请用以下纯文本格式输出每章（必须输出全部10章）：
+Return all ten chapters in plain text using these labels:
 
-第1章
-本章目标：...
-本章冲突：...
-本章爽点：...
-新增信息：...
-人物变化：...
-伏笔推进：...
-结尾钩子：...
+Chapter 1
+Chapter Goal: ...
+Chapter Conflict: ...
+Chapter Payoff: ...
+New Information: ...
+Character Change: ...
+Foreshadowing: ...
+Ending Hook: ...
 
-第2章
-本章目标：...
-（以此类推，直到第10章）
+Chapter 2
+Chapter Goal: ...
+(Repeat through Chapter 10.)
 
-闭环总结
-弧目标：...
-下一弧钩子：...
+Arc Summary
+Arc Goal: ...
+Next Arc Hook: ...
 """
             )
             text_result = await self.generate(
@@ -1232,110 +1188,55 @@ class TopicScoutAgent(BaseAgent):
         """Parse plain-text mini-arc outline into chapter list.
 
         Accepts multiple formats:
-          === 第N章 ===  /  ## 第N章  /  第N章  /  N.
-        With field labels in Chinese or abbreviated form.
+          === Chapter N === / ## Chapter N / Chapter N / N.
+        Accepts English and legacy Chinese labels.
         """
         import re
 
-        chapters = []
-        # Split by any chapter marker: === 第N章 ===, ## 第N章, 第N章, N.
-        chapter_blocks = re.split(
-            r"\n(?=(?:===?\s*)?第\s*\d+\s*章|^\d+[\.\)、])",
-            text,
-            flags=re.MULTILINE,
+        heading = re.compile(
+            r"^[ \t]*(?:={2,}[ \t]*|#{1,6}[ \t]*)?"
+            r"(?:Chapter[ \t]+(\d+)\b|第[ \t]*(\d+)[ \t]*章|(\d+)[.)）、])",
+            re.IGNORECASE | re.MULTILINE,
         )
-        # Also try splitting by double-newline if the above yields too few blocks
-        if len(chapter_blocks) < 5:
-            chapter_blocks = re.split(r"\n\s*\n(?=第)", text)
+        summary_heading = re.search(
+            r"^[ \t]*(?:={2,}[ \t]*|#{1,6}[ \t]*)?(?:Arc Summary|Summary|闭环总结|总结|概要)\b",
+            text,
+            re.IGNORECASE | re.MULTILINE,
+        )
+        chapter_text = text[:summary_heading.start()] if summary_heading else text
+        headings = list(heading.finditer(chapter_text))
 
-        for block in chapter_blocks:
-            match = re.search(r"第\s*(\d+)\s*章", block)
-            if not match:
-                # Try numbered format: "1." or "1、"
-                match = re.search(r"(?:^|\n)\s*(\d+)\s*[\.\)、]", block)
-            if not match:
+        def field(block: str, labels: str) -> str:
+            match = re.search(rf"^[ \t]*(?:[-*][ \t]+)?(?:{labels})[：:][ \t]*([^\n]+)", block, re.IGNORECASE | re.MULTILINE)
+            return match.group(1).strip() if match else ""
+
+        chapters = []
+        for i, match in enumerate(headings):
+            chapter_number = int(next(group for group in match.groups() if group is not None))
+            if not 1 <= chapter_number <= 50:
                 continue
-            ch_num = int(match.group(1))
-            if ch_num < 1 or ch_num > 50:
-                continue
-
-            def _f(*patterns, default=""):
-                for pat in patterns:
-                    m = re.search(pat, block)
-                    if m:
-                        return m.group(1).strip()
-                return default
-
+            end = headings[i + 1].start() if i + 1 < len(headings) else len(chapter_text)
+            block = chapter_text[match.end():end]
             chapters.append(
                 MiniArcChapter(
-                    chapter_number=ch_num,
-                    goal=_f(
-                        r"(?:本章)?目标[：:]\s*(.+?)(?:\n|$)",
-                        r"目标[：:]\s*(.+?)(?:\n|$)",
-                    ),
-                    conflict=_f(
-                        r"(?:本章)?冲突[：:]\s*(.+?)(?:\n|$)",
-                        r"冲突[：:]\s*(.+?)(?:\n|$)",
-                        r"矛盾[：:]\s*(.+?)(?:\n|$)",
-                    ),
-                    pleasure_point=_f(
-                        r"(?:本章)?爽点[：:]\s*(.+?)(?:\n|$)",
-                        r"爽点[：:]\s*(.+?)(?:\n|$)",
-                    ),
-                    new_info=_f(
-                        r"新增?信息[：:]\s*(.+?)(?:\n|$)",
-                        r"新信息[：:]\s*(.+?)(?:\n|$)",
-                    ),
-                    character_change=_f(
-                        r"人物[状变][态化][：:]\s*(.+?)(?:\n|$)",
-                        r"人物变化[：:]\s*(.+?)(?:\n|$)",
-                    ),
-                    foreshadowing=_f(
-                        r"伏笔[推进][进前][：:]\s*(.+?)(?:\n|$)",
-                        r"伏笔[：:]\s*(.+?)(?:\n|$)",
-                    ),
-                    ending_hook=_f(
-                        r"(?:结尾)?钩子[：:]\s*(.+?)(?:\n|$)",
-                        r"钩子[：:]\s*(.+?)(?:\n|$)",
-                    ),
+                    chapter_number=chapter_number,
+                    goal=field(block, r"(?:Chapter )?Goal|(?:本章)?目标"),
+                    conflict=field(block, r"(?:Chapter )?Conflict|(?:本章)?冲突|矛盾"),
+                    pleasure_point=field(block, r"(?:Chapter )?Payoff|(?:本章)?爽点"),
+                    new_info=field(block, r"New Information|新(?:增)?信息"),
+                    character_change=field(block, r"Character Change|人物(?:状态)?变化|人物状态"),
+                    foreshadowing=field(block, r"Foreshadowing|伏笔(?:推进|推前)?"),
+                    ending_hook=field(block, r"Ending Hook|(?:结尾)?钩子"),
                 )
             )
 
         chapters.sort(key=lambda c: c.chapter_number)
-
-        # Parse summary section (multiple possible formats)
-        arc_goal = ""
-        next_hook = ""
-        # Try to find summary section with various markers
-        summary_match = re.search(
-            r"(?:===?\s*)?闭环总结\s*(?:===?\s*)?\n?(.+?)(?:\Z)",
-            text,
-            re.DOTALL,
-        )
-        if not summary_match:
-            # Also try "总结" or "Summary" section
-            summary_match = re.search(
-                r"(?:===?\s*)?(?:总结|Summary|概要)\s*(?:===?\s*)?\n?(.+?)(?:\Z)",
-                text,
-                re.DOTALL,
-            )
-        if summary_match:
-            summary = summary_match.group(1)
-            m = re.search(r"弧目标[：:]\s*(.+?)(?:\n|$)", summary)
-            if m:
-                arc_goal = m.group(1).strip()
-            m = re.search(r"(?:下一弧)?钩子[：:]\s*(.+?)(?:\n|$)", summary)
-            if m:
-                next_hook = m.group(1).strip()
-        # Fallback: search for arc_goal/next_hook anywhere in text
-        if not arc_goal:
-            m = re.search(r"弧目标[：:]\s*(.+?)(?:\n|$)", text)
-            if m:
-                arc_goal = m.group(1).strip()
-        if not next_hook:
-            m = re.search(r"(?:下一弧)?钩子[：:]\s*(.+?)(?:\n|$)", text)
-            if m:
-                next_hook = m.group(1).strip()
+        summary_text = text[summary_heading.end():] if summary_heading else text
+        arc_goal = field(summary_text, r"Arc Goal|弧目标") or field(text, r"Arc Goal|弧目标")
+        next_hook = field(summary_text, r"Next Arc Hook|下一弧钩子")
+        if not next_hook and summary_heading:
+            next_hook = field(summary_text, r"钩子")
+        next_hook = next_hook or field(text, r"Next Arc Hook|下一弧钩子")
 
         return chapters, arc_goal, next_hook
 
@@ -1347,19 +1248,19 @@ class TopicScoutAgent(BaseAgent):
     def _format_scan_for_prompt(report: ScanReport) -> str:
         """Format a ScanReport as prompt text."""
         if report.scan_failed:
-            return f"[{report.platform}] 本次扫榜失败: {report.summary}"
+            return f"[{report.platform}] Ranking scan failed: {report.summary}"
         lines = [
-            f"平台：{report.platform}",
-            f"榜单：{report.list_name}",
-            f"日期：{report.date}",
-            f"共 {len(report.entries)} 条记录",
+            f"Platform: {report.platform}",
+            f"Rankings: {report.list_name}",
+            f"Date: {report.date}",
+            f"{len(report.entries)} entries",
             "",
         ]
         for e in report.entries:
             lines.append(
-                f"#{e.rank} {e.title} | 题材：{e.genre} | 金手指：{e.golden_finger} | 爽点循环：{e.pleasure_loop}"
+                f"#{e.rank} {e.title} | Genre: {e.genre} | Signature advantage: {e.golden_finger} | Payoff loop: {e.pleasure_loop}"
             )
-        lines.append(f"\n趋势总结：{report.summary}")
+        lines.append(f"\nTrend summary: {report.summary}")
         return "\n".join(lines)
 
     @staticmethod
@@ -1368,14 +1269,14 @@ class TopicScoutAgent(BaseAgent):
         lines = []
         for e in report.entries:
             lines.append(
-                f"- {e.genre}: 飞卢热度={'是' if e.feilu_heat else '否'}, "
-                f"番茄基础={'是' if e.tomato_audience else '否'}, "
-                f"飞卢吸人点={e.feilu_appeal}, "
-                f"番茄调整={e.tomato_adjustment}, "
-                f"风险={e.risk}, 推荐={e.recommendation}"
+                f"- {e.genre}: Popular on Feilu: {'Yes' if e.feilu_heat else 'No'}, "
+                f"Established Fanqie audience: {'Yes' if e.tomato_audience else 'No'}, "
+                f"Feilu appeal: {e.feilu_appeal}, "
+                f"Fanqie adaptation: {e.tomato_adjustment}, "
+                f"Risk: {e.risk}, Recommendation: {e.recommendation}"
             )
         if report.selected_directions:
-            lines.append(f"\n保留方向：{', '.join(report.selected_directions)}")
+            lines.append(f"\nSelected directions: {', '.join(report.selected_directions)}")
         return "\n".join(lines)
 
     @staticmethod
@@ -1385,10 +1286,10 @@ class TopicScoutAgent(BaseAgent):
         for e in report.entries:
             lines.append(
                 f"- {e.title} ({e.genre}): "
-                f"开局={e.protagonist_opening}, 金手指={e.golden_finger}, "
-                f"爽点循环={e.pleasure_loop}"
+                f"Start ={e.protagonist_opening}, signature advantage ={e.golden_finger}, "
+                f"Payoff loop ={e.pleasure_loop}"
             )
-        lines.append(f"\n结构总结：{report.structural_summary}")
+        lines.append(f"\nStructure summary: {report.structural_summary}")
         return "\n".join(lines)
 
     @staticmethod
@@ -1398,8 +1299,8 @@ class TopicScoutAgent(BaseAgent):
         for i, t in enumerate(output.topics, 1):
             lines.append(
                 f"{i}. {t.genre_name}: {t.one_line_setting}\n"
-                f"   金手指={t.golden_finger}, 首章冲突={t.chapter1_conflict}, "
-                f"番茄适配={t.tomato_fit}, 视频表现={t.video_potential}"
+                f"   Signature advantage: {t.golden_finger}, Chapter Conflict ={t.chapter1_conflict}, "
+                f"Fanqie fit: {t.tomato_fit}, Video Performance ={t.video_potential}"
             )
         return "\n".join(lines)
 
@@ -1419,101 +1320,101 @@ def _build_deterministic_mini_arc(
     This is the ultimate fallback when both structured and text generation fail.
     Uses standard web novel pacing: pressure → rules → obstacles → counterattack → payoff.
     """
-    golden = topic.golden_finger or "金手指"
-    conflict = topic.chapter1_conflict or "开篇冲突"
-    pleasure = topic.first_pleasure_wave or "打脸逆袭"
+    golden = topic.golden_finger or "Signature Advantage"
+    conflict = topic.chapter1_conflict or "the opening conflict"
+    pleasure = topic.first_pleasure_wave or "a satisfying comeback"
     title = title_report.final_title or genre_name
 
     chapter_template = [
         {
-            "goal": f"开局建立冲突：{conflict}",
-            "conflict": f"主角面临{conflict}的困境",
-            "pleasure_point": "开篇压力制造悬念，读者期待反转",
-            "new_info": "引入世界观基本设定，展示主角处境",
-            "character_change": "主角从被动承受转向主动应对",
-            "foreshadowing": f"暗示{golden}的存在",
-            "ending_hook": f"主角发现{golden}的线索，读者期待下一章",
+            "goal": f"Establish the opening conflict: {conflict}",
+            "conflict": f"The protagonist faces {conflict}",
+            "pleasure_point": "Use immediate pressure to make readers anticipate a reversal",
+            "new_info": "Introduce the setting and the protagonist's circumstances",
+            "character_change": "The main character has moved from passive to active response",
+            "foreshadowing": f"Hint at {golden}",
+            "ending_hook": f"The protagonist discovers a clue about {golden}",
         },
         {
-            "goal": f"展示{golden}的初步能力",
-            "conflict": "主角尝试使用金手指但遭遇阻力",
-            "pleasure_point": f"{golden}首次展现，给读者爽感",
-            "new_info": f"揭示{golden}的基本规则和限制",
-            "character_change": "主角开始建立自信",
-            "foreshadowing": "埋下更大的世界观伏笔",
-            "ending_hook": f"主角用{golden}获得第一次小胜利",
+            "goal": f"Show what {golden} can do",
+            "conflict": "The lead tries to use signature advantage but encounters resistance",
+            "pleasure_point": f"{golden} provides its first payoff",
+            "new_info": f"Reveal the basic rules and limits of {golden}",
+            "character_change": "The lead starts to build confidence",
+            "foreshadowing": "Set up a larger revelation about the world",
+            "ending_hook": f"The protagonist uses {golden} to win a small victory",
         },
         {
-            "goal": "建立主角的第一个小目标",
-            "conflict": "外部势力开始注意到主角的变化",
-            "pleasure_point": "主角用能力解决一个小麻烦",
-            "new_info": "展示这个世界的力量体系或社会规则",
-            "character_change": "主角开始主动规划行动",
-            "foreshadowing": "引入第一个小反派或竞争对手",
-            "ending_hook": "反派开始注意到主角",
+            "goal": "Create the lead's first little goal",
+            "conflict": "The outside world is beginning to notice the change of the main actor",
+            "pleasure_point": "The main character uses his power to solve a small problem",
+            "new_info": "Showing the power system or social rules of the world",
+            "character_change": "The main character is starting to plan the operation",
+            "foreshadowing": "To introduce the first little villain or rival",
+            "ending_hook": "The villains are beginning to notice the main character",
         },
         {
-            "goal": "主角遭遇第一次重大挫折",
-            "conflict": "对手利用规则或势力压制主角",
-            "pleasure_point": "主角在逆境中发现金手指的新用法",
-            "new_info": "揭示对手的背景和动机",
-            "character_change": "主角认识到需要变强",
-            "foreshadowing": "暗示背后更大的阴谋",
-            "ending_hook": "主角制定反击计划",
+            "goal": "The main character suffered a first major setback",
+            "conflict": "The opponent uses the rules or the power to suppress the main actor",
+            "pleasure_point": "A setback reveals a new use for the protagonist's advantage",
+            "new_info": "The background and motive of the opponent",
+            "character_change": "The main character realizes the need to be strong",
+            "foreshadowing": "Insinuate a bigger conspiracy",
+            "ending_hook": "The main character is planning a counterattack",
         },
         {
-            "goal": "主角开始布局反击",
-            "conflict": "资源不足，需要争取盟友或资源",
-            "pleasure_point": "主角用智慧获得关键资源或盟友",
-            "new_info": "引入新角色（盟友或导师）",
-            "character_change": "主角从独行侠变为有支持者",
-            "foreshadowing": "埋下盟友身份的伏笔",
-            "ending_hook": "准备阶段完成，行动即将开始",
+            "goal": "The main character starts to set up a counterattack",
+            "conflict": "Inadequate resources, need for allies or resources",
+            "pleasure_point": "The protagonists use wisdom to gain access to critical resources or allies",
+            "new_info": "Introduction of new roles (allies or mentors)",
+            "character_change": "The protagonist gains support after working alone",
+            "foreshadowing": "Plant a clue about the ally's identity",
+            "ending_hook": "The preparation phase is complete. The operation is about to begin",
         },
         {
-            "goal": "第一次正面交锋",
-            "conflict": f"主角用{golden}与对手正面碰撞",
-            "pleasure_point": "战斗或较量中的高光时刻",
-            "new_info": "揭示对手的弱点和秘密",
-            "character_change": "主角实战经验增长",
-            "foreshadowing": "发现对手背后有更大的势力",
-            "ending_hook": "暂时击退对手但发现更大的威胁",
+            "goal": "Stage the first direct confrontation",
+            "conflict": f"The protagonist uses {golden} in a direct confrontation",
+            "pleasure_point": "High-light moments in battle or battle",
+            "new_info": "Discovering the weakness and secrets of the opponent",
+            "character_change": "The main actor's experience in the field has grown",
+            "foreshadowing": "There's more power behind the enemy",
+            "ending_hook": "The protagonist drives off the opponent and discovers a greater threat",
         },
         {
-            "goal": "主角消化战斗收获，准备更大行动",
-            "conflict": "新威胁出现，主角需要升级",
-            "pleasure_point": f"{golden}升级或获得新能力",
-            "new_info": "揭示世界观的更深层次",
-            "character_change": "主角实力和心智双重成长",
-            "foreshadowing": "暗示最终boss的存在",
-            "ending_hook": "主角下定决心面对最终挑战",
+            "goal": "The main character digests the gains and prepares for greater action",
+            "conflict": "There's a new threat. The main character needs to be upgraded",
+            "pleasure_point": f"Upgrade {golden} or reveal a new ability",
+            "new_info": "To reveal a deeper view of the world",
+            "character_change": "He grew up with both strength and mind",
+            "foreshadowing": "Insinuating the existence of a boss in the end",
+            "ending_hook": "The main character is determined to face the ultimate challenge",
         },
         {
-            "goal": "主角主动出击",
-            "conflict": "深入对手地盘或势力范围",
-            "pleasure_point": "连续打脸，层层推进的爽感",
-            "new_info": "揭示事件背后的真相",
-            "character_change": "主角从被动变为主动掌控局面",
-            "foreshadowing": "回收之前埋下的伏笔",
-            "ending_hook": "即将迎来最终对决",
+            "goal": "The lead is on his way",
+            "conflict": "Deep into the enemy's territory or sphere of influence",
+            "pleasure_point": "The protagonist gains ground by repeatedly proving opponents wrong",
+            "new_info": "To reveal the truth behind the events",
+            "character_change": "From passive to active control",
+            "foreshadowing": "Pay off earlier foreshadowing",
+            "ending_hook": "We're on our way to a final match",
         },
         {
-            "goal": "决战时刻",
-            "conflict": "主角用全力与最终对手决战",
-            "pleasure_point": "最高潮的爽点释放",
-            "new_info": "揭示事件的全部真相",
-            "character_change": "主角完成阶段性成长",
-            "foreshadowing": "埋下下一卷的伏笔",
-            "ending_hook": "胜利在望",
+            "goal": "It's a duel",
+            "conflict": "The main character fights the final enemy with all his might",
+            "pleasure_point": "The peak payoff release",
+            "new_info": "To reveal the full truth about what happened",
+            "character_change": "The protagonist completes this phase of their growth",
+            "foreshadowing": "Plant a clue for the next volume",
+            "ending_hook": "Victory is on the horizon",
         },
         {
-            "goal": "收束第一条故事线",
-            "conflict": "处理决战后遗留的问题",
-            "pleasure_point": f"{pleasure}的完整释放",
-            "new_info": "展示主角的新身份或新处境",
-            "character_change": "主角完成本卷的角色弧光",
-            "foreshadowing": "为下一卷埋下新钩子",
-            "ending_hook": "新的挑战或机遇出现，读者期待下一卷",
+            "goal": "Resolve the opening storyline",
+            "conflict": "Deal with the aftermath of the final confrontation",
+            "pleasure_point": f"Deliver the full payoff: {pleasure}",
+            "new_info": "Reveal the protagonist's new role or circumstances",
+            "character_change": "Complete the protagonist's arc for this volume",
+            "foreshadowing": "Set up the next volume",
+            "ending_hook": "New challenges or opportunities arise and readers look forward to the next round",
         },
     ]
 
@@ -1536,6 +1437,6 @@ def _build_deterministic_mini_arc(
         genre_name=genre_name,
         total_words="20,000-21,000",
         chapters=chapters,
-        arc_goal=f"完成{conflict}的第一个小闭环，实现{pleasure}",
-        next_arc_hook=f"第一事件收束后，更大的世界向主角展开。《{title}》的第二卷即将开始。",
+        arc_goal=f"Resolve {conflict} and deliver {pleasure}",
+        next_arc_hook=f"With the opening conflict resolved, a larger world opens up to the protagonist in the next volume of {title}.",
     )

@@ -1,7 +1,7 @@
 - id: 35387fb3e8ef
   chapter: 0
   in_story_time: ''
-  description: 林致远在出租屋惊醒，确认重生时间点
+  description: "Lin Zhiyuan woke up in the rental house. He confirmed the time of his rebirth."
   characters: []
   location: ''
   causality: []
@@ -9,7 +9,7 @@
 - id: 0b623527eaa7
   chapter: 0
   in_story_time: ''
-  description: 周伯年死亡预言与台风预警同步
+  description: "Zhou Bonian’s death predictions coincide with typhoon warnings."
   characters: []
   location: ''
   causality: []
@@ -17,7 +17,7 @@
 - id: 9211966b8aeb
   chapter: 0
   in_story_time: ''
-  description: 元启科技'夜市星火计划'倒计时启动
+  description: "Yuanqi Technology’s “Night Market Spark Plan” countdown has begun."
   characters: []
   location: ''
   causality: []
@@ -73,7 +73,7 @@
 - id: 15c3637f55b1
   chapter: 0
   in_story_time: ''
-  description: 林致远在冷链仓库地下三层发现诺基亚3310荧光编码与周伯年实验室血管图谱重合
+  description: "Lin Zhiyuan discovered that the fluorescent codes on the Nokia 3310 device were consistent with those found in Zhou Bonian’s laboratory’s vascular maps."
   characters: []
   location: ''
   causality: []
@@ -81,7 +81,7 @@
 - id: ded7ebe61ea9
   chapter: 0
   in_story_time: ''
-  description: 苏晴AR眼镜捕捉量子信号生成DNA双螺旋可视化图像
+  description: "The Su Qing AR glasses can capture quantum signals and generate visual images of DNA double helix structures."
   characters: []
   location: ''
   causality: []
@@ -89,7 +89,7 @@
 - id: 6470e7264d10
   chapter: 0
   in_story_time: ''
-  description: 冷链集装箱冷凝水自主游动形成五线谱符号
+  description: "The condensate from the cold chain containers moves independently, forming a musical staff-like pattern."
   characters: []
   location: ''
   causality: []
@@ -101,7 +101,7 @@
   characters: []
   location: ''
   causality: []
-  importance: 揭示核心阴谋
+  importance: "Revealing the core conspiracy"
 - id: 6c685985e336
   chapter: 0
   in_story_time: '20:47'
@@ -109,7 +109,7 @@
   characters: []
   location: ''
   causality: []
-  importance: 关键转折点
+  importance: "Key turning points"
 - id: 07c75082a096
   chapter: 0
   in_story_time: '21:03'
@@ -117,11 +117,11 @@
   characters: []
   location: ''
   causality: []
-  importance: 战略升级
+  importance: "Strategic Upgrade"
 - id: cfbec39916ef
   chapter: 0
   in_story_time: ''
-  description: 苏晴激活诺基亚3310触发静脉荧光编码映射
+  description: "Su Qing activates the Nokia 3310 to trigger the venous fluorescence encoding mapping process."
   characters: []
   location: ''
   causality: []
@@ -129,7 +129,7 @@
 - id: c215eeb448b0
   chapter: 0
   in_story_time: ''
-  description: 应急阀红光与AR眼镜电火花引发系统崩溃预警
+  description: "Emergency valve red light and electric sparks from AR glasses cause system failure warnings."
   characters: []
   location: ''
   causality: []
@@ -137,7 +137,7 @@
 - id: 54a7a7ff21c5
   chapter: 0
   in_story_time: ''
-  description: 蚕茧密钥激活1998年实验室记忆投影
+  description: "The silkworm cocoon key was activated in 1998. It’s a memory projection from the laboratory."
   characters: []
   location: ''
   causality: []
@@ -145,7 +145,7 @@
 - id: c35599e3e8e1
   chapter: 0
   in_story_time: ''
-  description: 量子服务器集群蓝光蒸腾白雾，苏晴手腕蝴蝶胎记首次出现量子纠缠症状
+  description: "The quantum server cluster emits a blue light, creating a white mist. Su Qing’s butterfly tattoo on her wrist shows signs of quantum entanglement for the first time."
   characters: []
   location: ''
   causality: []
@@ -153,7 +153,7 @@
 - id: a59d6e43978a
   chapter: 0
   in_story_time: ''
-  description: 蚕茧密钥分泌物与量子存储阵列生成微型蜂巢结构，激活量子墙粒子云LOGO
+  description: "The secretions from silkworms’ cocoons and quantum storage arrays create tiny honeycomb structures. This activates the quantum wall particles cloud LOGO."
   characters: []
   location: ''
   causality: []
@@ -161,7 +161,7 @@
 - id: 7e583c572fdb
   chapter: 0
   in_story_time: ''
-  description: 赵铭通过通风管道传递时间锚点信息，与周伯年实验室爆炸形成时空闭环
+  description: "Zhao Ming transmitted the time-anchor information through the ventilation ducts. This led to a temporal and spatial loop, which coincided with the explosion that occurred in Zhou Bonian’s laboratory."
   characters: []
   location: ''
   causality: []
@@ -169,55 +169,55 @@
 - id: afadb869d886
   chapter: 0
   in_story_time: ''
-  description: 冷藏仓量子场失控，赵铭启动洛书可乐瓶阵列稳定装置
+  description: "The quantum field in the storage compartment has become out of control. Zhao Ming has activated the Lucky Coke Bottle Array Stabilization Device."
   characters: []
   location: ''
   causality: []
-  importance: 触发汉代编钟振动频率导致时空共振
+  importance: "The vibration frequency of the chimes from the Han Dynasty triggered a phenomenon of spatial resonance."
 - id: 039fa220b8aa
   chapter: 0
   in_story_time: ''
-  description: 量子茧房坍缩释放十二年记忆碎片
+  description: "Quantum cocoon collapse releases fragments of memories from twelve years ago"
   characters: []
   location: ''
   causality: []
-  importance: 证实时空折叠与个体记忆强关联，叶婉清进入量子共振状态
+  importance: "The verification of spatio-temporal folding is strongly related to individual memories. Ye Wanqing enters a state of quantum resonance."
 - id: fac49c0f7f8b
   chapter: 0
   in_story_time: ''
-  description: 灰兔子通过量子传送带抵达协议签署现场
+  description: "The gray rabbit arrived at the site where the agreement was signed via the quantum conveyor belt."
   characters: []
   location: ''
   causality: []
-  importance: 验证冷链物流网络时空容器功能
+  importance: "Verifying the spatio-temporal capabilities of the cold chain logistics network"
 - id: 39a50daea3f9
   chapter: 0
   in_story_time: ''
-  description: 苏晴AR眼镜激活1998年基因图谱投影，与混凝土荧光墨水匹配度达99.9%
+  description: "The Su Qing AR glasses activate the 1998 gene map projection. The matching rate with the concrete fluorescent ink is 99.9%."
   characters: []
   location: ''
   causality: []
-  importance: 发现时空坐标双重验证线索
+  importance: "A clue to the double-verification of spacetime coordinates was discovered."
 - id: d31d21c08bc0
   chapter: 0
   in_story_time: ''
-  description: 赵铭道袍内衬涂层显现冷藏车编码，直播间青铜编钟频率激活区块链验证代码
+  description: "The coating on Zhao Ming’s robe shows the code for the refrigerated truck. The frequency of the bronze chime in the live broadcast activates the blockchain verification code."
   characters: []
   location: ''
   causality: []
-  importance: 建立古代器物与现代加密技术的量子桥梁
+  importance: "Establishing a quantum bridge between ancient artifacts and modern encryption technologies"
 - id: 562bddcca115
   chapter: 0
   in_story_time: ''
-  description: 叶婉清血墨与林致远掌纹量子纠缠扩展至锁骨蝴蝶印记共振
+  description: "Ye Wanqing’s blood ink and Lin Zhiyuan’s palm patterns create a quantum entanglement that extends to the clavicle, creating a resonance like a butterfly mark."
   characters: []
   location: ''
   causality: []
-  importance: 形成跨时空数据链同步
+  importance: "Forming a cross-time and space data link for synchronization"
 - id: 8d5414fbedba
   chapter: 0
   in_story_time: ''
-  description: 地契量子态半衰期加速碳化，墨迹重组为DNA螺旋
+  description: "The half-life of the land deed quantum state accelerates carbonization. The ink is reorganized into DNA helices."
   characters: []
   location: ''
   causality: []
@@ -225,7 +225,7 @@
 - id: 0aa450a5a0bf
   chapter: 0
   in_story_time: ''
-  description: 冷链物流协议第七条时间炸弹被激活，沙盘投射1997年数字
+  description: "Article 7 of the cold chain logistics agreement has been activated. The simulation shows the numbers from the year 1997."
   characters: []
   location: ''
   causality: []
@@ -233,7 +233,7 @@
 - id: e6c28390af29
   chapter: 0
   in_story_time: ''
-  description: 周伯年实验室量子投影被特定数据流触发重现
+  description: "Zhou Bonian’s laboratory quantum projections are triggered by specific data streams, resulting in their recurrence."
   characters: []
   location: ''
   causality: []

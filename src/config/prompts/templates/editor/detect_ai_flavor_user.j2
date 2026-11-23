@@ -1,17 +1,9 @@
 {# Editor Agent — detect_ai_flavor user prompt #}
-请分析以下文本的"AI味"程度：
+Assess how formulaic this prose sounds.
 
-【文本】
+Text:
 {{ content_preview }}
 
-AI味常见特征：
-- 「综上所述」「值得注意的是」「在...的过程中」「不仅...而且...」等机械表达
-- 段落结构过于工整（总是总分总、问题-分析-结论）
-- 情感描写空洞（「他感到一阵XX」而不是通过行动展示）
-- 对话过于功能化（角色说的话都是为推进剧情服务，缺乏个性）
-- 过渡词滥用（「然而」「因此」「与此同时」过度使用）
-- 描写过于平均（每个场景都分配了差不多的字数，缺乏重点）
+Look for stock expressions such as "in summary," "it is worth noting," "in the process of," and "not only ... but also." Check for repetitive paragraph structures, emotions named without supporting action, dialogue that only moves the plot, overused transitions, and equally weighted descriptions that flatten important scenes.
 
-请给出：
-1. AI味评分（0=完全像AI写的, 10=完全自然的人类写作）
-2. 具体的问题段落和修改建议
+Give a score from 0 (highly formulaic) to 10 (fully natural), cite the passages in question, and suggest revisions.

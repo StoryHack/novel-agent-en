@@ -1,6 +1,6 @@
 {
-  "model": "BAAI/bge-small-zh-v1.5 (512-dim, 本地加载)",
-  "query_paraphrase": "Ollama qwen3:8b 本地改写",
+  "model": "BAAI/bge-small-zh-v1.5 (512 dimensions, loaded locally)",
+  "query_paraphrase": "Local Ollama qwen3:8b (original Chinese-language run)",
   "n_facts": 42,
   "n_events": 30,
   "top_k": 5,

@@ -102,50 +102,43 @@ class CharacterManagerAgent(BaseAgent):
         conflict_descs = "\n".join(f"- {c.description}" for c in conflicts)
 
         system_default = self.build_system_prompt(
-            role="角色设计师",
-            expertise="创造立体、有深度、令人难忘的小说角色。精通角色原型（英雄、导师、"
-            "伙伴、信使、捣蛋鬼、阴影等），能为每个角色赋予独特的声音、动机和缺陷。",
+            role="character designer",
+            expertise="Create memorable, multidimensional characters. Give each one a distinctive voice, motivation, and flaw. Draw on archetypes such as hero, mentor, ally, herald, trickster, and shadow.",
         )
-        user_default = f"""请为以下小说创建角色阵容：
+        user_default = f"""Create a cast for this novel.
 
-【故事灵感】{config.inspiration}
-【题材】{", ".join(config.genre)}
-【世界】{world.name}（{world.world_type}）
-【主题】{theme_names}
-【核心冲突】
+Inspiration: {config.inspiration}
+Genre: {', '.join(config.genre)}
+World: {world.name} ({world.world_type})
+Themes: {theme_names}
+Central conflicts:
 {conflict_descs}
 
-请创建以下角色（至少 4-6 个）：
+Create 4–6 characters:
+1. A protagonist (required).
+2. An antagonist or rival (required).
+3. A deuteragonist who is the protagonist's ally or companion.
+4. An optional mentor or guide.
+5. One or two other important supporting characters.
 
-1. **主角（protagonist）** — 必须创建
-2. **反派/对手（antagonist）** — 必须创建
-3. **重要配角（deuteragonist）** — 主角的盟友或伙伴
-4. **导师角色（mentor）** — 可选的导师/引导者
-5. **其他配角（supporting）** — 1-2个重要配角
-
-每个角色需要：
-- id: 唯一ID（如 char_mc, char_ant, char_ally 等）
-- name: 名字
+For each character, provide:
+- id: Unique ID, such as char_mc, char_ant, or char_ally
+- name: Character name
 - role: protagonist/antagonist/deuteragonist/supporting/minor
-- archetype: 原型（hero/mentor/herald/trickster/shadow 等）
-- age: 年龄
-- gender: 性别
-- appearance: 外貌描述（具体、有辨识度）
-- personality: 性格特征（包括优点和缺点，要有矛盾性）
-- motivation: 核心动机（ta真正想要什么）
-- flaw: 主要缺陷（阻碍ta成长的障碍）
-- backstory: 背景故事（1-2段，解释ta为何成为现在的样子）
-- abilities: 能力列表
+- archetype: hero/mentor/herald/trickster/shadow, etc.
+- age: Age
+- gender: Gender
+- appearance: Distinctive physical details
+- personality: Strengths, weaknesses, and contradictions
+- motivation: What the character truly wants
+- flaw: A trait that holds them back
+- backstory: One or two paragraphs explaining who they have become
+- abilities: List of abilities
 
-角色设计要求：
-- 主角要有让人共鸣的动机和明显的缺陷
-- 反派要有合理的动机，不能是纯粹的邪恶
-- 角色之间要有潜在的冲突和互补关系
-- 每个角色要有独特的声音和行事风格
-- 服务于主题和核心冲突"""
+Give the protagonist a relatable motivation and a clear flaw. Give the antagonist credible motives. Create potential conflicts and complementary relationships. Give each character a distinct voice and manner that serves the story's themes and conflicts."""
 
         if config.taboo_content:
-            user_default += f"\n\n【避讳】避免：{', '.join(config.taboo_content)}"
+            user_default += f"\n\nContent to avoid: {', '.join(config.taboo_content)}"
 
         system, user = self.render_prompts(
             "generate_profiles",
@@ -181,28 +174,25 @@ class CharacterManagerAgent(BaseAgent):
         char_list = "\n".join(char_summaries)
 
         system_default = self.build_system_prompt(
-            role="角色关系设计师",
-            expertise="设计复杂、真实、有张力的角色关系网络。理解权力动态、情感层次、信任构建和关系演变。",
+            role="character relationship designer",
+            expertise="Build believable relationships with tension and room for change. Consider power dynamics, emotional depth, trust, and how relationships develop over time.",
         )
-        user_default = f"""基于以下角色列表，为每对角色设计关系：
+        user_default = f"""Design relationships between pairs of characters.
 
-【角色列表】
+Characters:
 {char_list}
 
-【主题】{", ".join(t.name for t in bible.themes)}
+Themes: {', '.join(t.name for t in bible.themes)}
 
-为每个角色与其他角色的关系定义：
+For each relationship, provide:
 - relationship_type: friend/rival/lover/enemy/family/mentor/subordinate/acquaintance
-- trust: 信任度 0.0-1.0
-- intimacy: 亲密度 0.0-1.0
-- power_balance: 权力关系（0.0=服从对方, 0.5=平等, 1.0=支配对方）
-- history: 共同的过往（1-2句话）
-- notes: 补充说明
+- trust: 0.0–1.0
+- intimacy: 0.0–1.0
+- power_balance: 0.0 for deference, 0.5 for equality, 1.0 for dominance
+- history: Their shared history in 1–2 sentences
+- notes: Additional details
 
-注意：
-- 关系要服务于故事冲突和主题
-- 要有张力和变化空间，不要都是和谐的
-- 主角和反派的关系是重中之重"""
+Use relationships to serve the story's conflicts and themes. Give the relationships tension and room to change. Pay special attention to the protagonist and antagonist."""
 
         system, user = self.render_prompts(
             "build_relationships",
@@ -240,30 +230,26 @@ class CharacterManagerAgent(BaseAgent):
 
         char_descriptions = []
         for cid, char in major_chars.items():
-            char_descriptions.append(f"[{cid}] {char.name} - 动机: {char.motivation} - 缺陷: {char.flaw}")
+            char_descriptions.append(f"[{cid}] {char.name} - Motivation: {char.motivation} - Flaw: {char.flaw}")
         char_list = "\n".join(char_descriptions)
 
         system_default = self.build_system_prompt(
-            role="角色弧线设计师",
-            expertise="为角色设计有层次的成长弧线。精通各种弧线类型（正向成长、堕落、"
-            "救赎、幻灭等），能让角色变化既出人意料又合情合理。",
+            role="character arc designer",
+            expertise="Build layered growth, downfall, redemption, or disillusionment arcs with developments that are surprising and believable.",
         )
-        user_default = f"""为主要角色设计角色弧线（变化轨迹）：
+        user_default = f"""Design arcs for the major characters.
 
-【角色】
+Characters:
 {char_list}
 
-为每个角色设计 3-5 个弧线节点（ArcBeat），每个节点包含：
-- chapter: 大致发生在哪一章（估算即可）
-- event: 发生了什么事
-- change: 角色如何因此改变
-- new_trait: 获得/显露了什么新特质（可选）
-- lost_trait: 失去/压抑了什么特质（可选）
+Give each character 3–5 ArcBeat entries:
+- chapter: Approximate chapter number
+- event: What happens
+- change: How the character changes as a result
+- new_trait: Trait gained or revealed (optional)
+- lost_trait: Trait lost or suppressed (optional)
 
-注意：
-- 弧线要体现角色的成长或堕落
-- 变化要循序渐进，有因果关联
-- 关键节点应和故事转折点对齐"""
+Show gradual growth or decline, with a clear cause for each change. Align major beats with plot turning points."""
 
         system, user = self.render_prompts(
             "design_arcs",

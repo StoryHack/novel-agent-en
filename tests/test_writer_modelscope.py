@@ -69,11 +69,11 @@ def writer(scheduler):
 def project_config():
     """Minimal project config for testing."""
     return ProjectConfig(
-        title="测试小说",
-        inspiration="一个废柴少年意外觉醒了远古血脉，在弱肉强食的修真世界一步步崛起的故事。",
-        genre=["玄幻", "修仙", "爽文"],
-        target_readers="喜欢热血升级流的男性读者",
-        tone="热血",
+        title="Test the novel",
+        inspiration="The story of a child who accidentally awakens ancient bloodlines and emerges step by step in a world where the weak and the weak eat.",
+        genre=["Fantasy", "Cultivation Fantasy", "It's a piece of shit"],
+        target_readers="A male reader who likes hot blood to escalate",
+        tone="Hot blood",
         target_word_count=90000,
     )
 
@@ -82,35 +82,35 @@ def project_config():
 def bible():
     """Minimal novel bible for testing."""
     world = WorldBuilding(
-        name="苍玄大陆",
+        name="Azure Continent",
         world_type="fantasy",
-        geography="九大州，中央为圣地，四方为蛮荒之地",
-        history="万年前仙魔大战后天地灵气稀薄，修真文明衰退",
-        culture="以实力为尊，宗门为基本单位",
-        technology_level="修真文明，凡人处于封建时代",
-        magic_system="修真体系：炼气→筑基→金丹→元婴→化神→合体→大乘→渡劫",
-        power_progression="每个大境界分九层小境界",
+        geography="Nine great states, the center of which is holy land, and the Quarters of which is a wilderness",
+        history="A thousand years ago, after the Great War of the Dynasty, the spirit of the world was thin and the civilization was deformed",
+        culture="It's all about strength, and it's all about the fundamentals",
+        technology_level="True civilization. Human beings are in feudal times",
+        magic_system="Realization system: →, building base →, Kimdan, baby →, baby →, chemical God, →, →, taking → to the beach",
+        power_progression="It's a nine-storey border",
     )
     factions = [
-        Faction(name="青云宗", faction_type="sect", goal="培养修真人才，维护正道", resources="灵石矿脉、藏经阁"),
-        Faction(name="魔渊教", faction_type="cult", goal="颠覆正道统治，夺取天地灵脉", resources="魔气源泉、暗杀组织"),
+        Faction(name="Green Yunzong", faction_type="sect", goal="Build a true man and maintain the right path", resources="Psychic veins, hidden in the loft"),
+        Faction(name="Heavenly Demon Sect", faction_type="cult", goal="To overthrow the rule of the right path and seize the heart of the heavens and earth", resources="A source of magic, a group of assassins"),
     ]
     style = StyleContract(
-        tone="热血",
+        tone="Hot blood",
         pacing_preference="fast",
         sentence_style="varied",
         dialogue_ratio=0.35,
         description_ratio=0.25,
     )
     themes = [
-        Theme(name="逆袭成长", description="主角从废柴一步步走向巅峰"),
-        Theme(name="友情与背叛", description="修真路上的盟友与敌人"),
+        Theme(name="Growth Against the Odds", description="The lead is moving from wastewood to the top"),
+        Theme(name="Friendship and betrayal", description="Allies and enemies on the path to the truth"),
     ]
     conflicts = [
         CoreConflict(
-            conflict_type="person_vs_society", description="主角被家族抛弃后在宗门中证明自己", stakes="生存与尊严"
+            conflict_type="person_vs_society", description="The main character was abandoned by the family and proved himself in the court", stakes="Survival and dignity"
         ),
-        CoreConflict(conflict_type="person_vs_person", description="主角与宿敌的终极对决", stakes="大道之争，不死不休"),
+        CoreConflict(conflict_type="person_vs_person", description="The final rivalry between the protagonist and the enemy", stakes="There's a fight in the streets"),
     ]
     return NovelBible(
         world=world,
@@ -119,7 +119,7 @@ def bible():
         style_contract=style,
         themes=themes,
         core_conflicts=conflicts,
-        pleasure_point_model="每10章一个小高潮：突破境界、打脸反派、获得机缘",
+        pleasure_point_model="One small orgasm for every 10 chapters: breaking the border, beating the face, getting the chance",
     )
 
 
@@ -130,30 +130,30 @@ def characters():
         characters={
             "char_001": CharacterProfile(
                 id="char_001",
-                name="秦默",
+                name="Qin Mo",
                 role="protagonist",
-                personality="坚韧不拔，心思缜密，但有时过于冒险",
-                motivation="打破命运枷锁，成为最强修真者",
-                flaw="过于固执，不轻易相信他人",
-                backstory="秦家嫡系却天生废脉，被家族流放至偏远矿区，偶得远古血脉传承",
+                personality="Strong, well-thought-out, sometimes too risky",
+                motivation="Breaking the shackles of fate and becoming the strongest of true men",
+                flaw="Too stubborn to trust people",
+                backstory="Qin's family is a natural waste of life and is exiled by the family to a remote mine",
             ),
             "char_002": CharacterProfile(
                 id="char_002",
-                name="苏婉清",
+                name="Su Wanqing",
                 role="deuteragonist",
-                personality="外冷内热，聪慧过人",
-                motivation="寻找失散多年的师父",
-                flaw="不善于表达感情",
-                backstory="青云宗第一天才，身世成谜",
+                personality="It's cold, it's hot, it's smart",
+                motivation="Looking for a teacher who's been separated for years",
+                flaw="I'm not good at expressing feelings",
+                backstory="It's only been the first day, and it's a mystery",
             ),
             "char_003": CharacterProfile(
                 id="char_003",
-                name="赵铁山",
+                name="Zhao Tieshan",
                 role="antagonist",
-                personality="骄横跋扈，心胸狭隘",
-                motivation="维护自己在宗门中的地位和权力",
-                flaw="嫉妒心极强，容不得别人超越自己",
-                backstory="青云宗内门弟子，家世显赫，自视甚高",
+                personality="Proud and narrow-minded",
+                motivation="To defend his position and authority in the kingdom",
+                flaw="Jealousy is too strong to allow others to outdo themselves",
+                backstory="Azure Cloud Sect-nemen is a student of high self-esteem",
             ),
         }
     )
@@ -163,17 +163,17 @@ def characters():
 def outline():
     """Minimal master outline for testing."""
     return MasterOutline(
-        title="逆命九霄",
-        logline="废柴少年秦默觉醒远古血脉，在弱肉强食的修真世界逆天改命，一步步踏上巅峰。",
+        title="I'm not going anywhere",
+        logline="Qin, a child who is a waste of wood, awakens the ancient veins and rises to the top in a world where the weak and the weak have to eat.",
         main_plot=[
             PlotArc(
-                name="主线", description="秦默从废柴到强者的成长之路", arc_type="main", start_chapter=1, end_chapter=30
+                name="Main Plot", description="Qin Mo's path from wastewood to strong men", arc_type="main", start_chapter=1, end_chapter=30
             ),
         ],
         subplots=[
             PlotArc(
-                name="苏婉清寻师线",
-                description="苏婉清寻找失散师父的调查线",
+                name="Su Wan Qing Qing Qing lines",
+                description="Su Wanqing is looking for a line of inquiry for the separated master",
                 arc_type="subplot",
                 start_chapter=3,
                 end_chapter=20,
@@ -181,16 +181,16 @@ def outline():
         ],
         volumes=[
             Volume(
-                title="第一卷：废柴觉醒",
-                logline="从家族弃子到宗门弟子的蜕变",
+                title="Volume I: Wake-up of wastewood",
+                logline="From the family's abandonment to the transformation of my disciples,",
                 number=1,
                 start_chapter=1,
                 end_chapter=10,
             ),
         ],
         major_turning_points=[
-            TurningPoint(turning_type="inciting_incident", chapter=1, description="秦默在矿区意外获得远古血脉传承"),
-            TurningPoint(turning_type="midpoint", chapter=15, description="宗门大比，秦默一战成名"),
+            TurningPoint(turning_type="inciting_incident", chapter=1, description="Qin Mo accidentally acquired an ancient blood line in the mine"),
+            TurningPoint(turning_type="midpoint", chapter=15, description="Qinmu's famous in the First World War"),
         ],
         chapter_count=30,
     )
@@ -201,54 +201,54 @@ def chapter_plan():
     """Minimal but realistic chapter plan for Chapter 1."""
     return ChapterPlan(
         chapter_number=1,
-        title="废脉少年",
-        goal="建立主角的困境和世界背景，让读者同情主角并期待转机",
+        title="The Boy Who Could Not Cultivate",
+        goal="Create the characters' dilemmas and the world context, make the readers feel for the protagonists, and look forward to a turn of events",
         scenes=[
             Scene(
                 number=1,
-                setting="秦家矿区 — 正午",
+                setting="Qin mine - midday",
                 pov="char_001",
                 characters_present=["char_001"],
-                goal="展示秦默在家族中的卑微地位",
-                conflict="其他矿工的嘲笑和监工的压迫",
-                outcome="秦默默默忍受，但眼中闪过一丝不甘",
+                goal="Showing Qinmeo's humble place in the family",
+                conflict="The scoffing of other miners and the oppression of supervisors",
+                outcome="Qin Meer has endured it, but he's got a flash in his eyes",
             ),
             Scene(
                 number=2,
-                setting="矿区深处 — 傍晚",
+                setting="Deep in the mine - evening",
                 pov="char_001",
                 characters_present=["char_001"],
-                goal="发现异常矿脉",
-                conflict="矿洞塌方，秦默被困",
-                outcome="在绝境中发现一块散发着远古气息的奇异晶石",
+                goal="There's an unusual mine",
+                conflict="The mine collapsed and Qin Mo was trapped",
+                outcome="In the end, we found a strange crystal that was reeking of ancient air",
             ),
             Scene(
                 number=3,
-                setting="矿区深处 — 夜晚",
+                setting="Deep in the mine - night",
                 pov="char_001",
                 characters_present=["char_001"],
-                goal="激活远古血脉",
-                conflict="晶石中的力量涌入体内，剧烈的痛苦几乎撕裂他的身体",
-                outcome="秦默成功融合远古血脉，感受到前所未有的力量",
+                goal="Activate ancient bloodlines",
+                conflict="The force in the crystals is pouring into his body, and his body is almost torn apart by severe pain",
+                outcome="Qin Mo has successfully integrated his ancient bloodline and felt the power he has never seen before",
             ),
         ],
         pov_character="char_001",
-        conflict="秦默在家族中的卑微地位与他内心不甘的冲突；远古血脉觉醒带来的身体痛苦",
+        conflict="Qin Mo's humble position in the family is in conflict with his own heart; the physical pain of the awakening of ancient blood",
         hooks=[
-            Hook(hook_type="cliffhanger", description="秦默体内的血脉觉醒后，一道古老的声音在他脑海中响起……"),
+            Hook(hook_type="cliffhanger", description="When Qin Mo's veins awakened, an old voice sounded in his mind..."),
         ],
         characters_involved=["char_001"],
-        information_increment="建立世界观（修真体系、秦家地位），引入主角困境，揭示远古血脉的存在",
-        reveals=["秦默体内隐藏着远古血脉"],
-        foreshadowing=["远古血脉的来源暗示", "青云宗与秦家的关系"],
+        information_increment="The creation of a world view (required system, status of the Qin family) and the introduction of the main character's dilemma, which reveals the existence of ancient bloodlines",
+        reveals=["Qin Mo's blood is hidden in ancient blood"],
+        foreshadowing=["It's a sign of ancient blood", "Qin's relationship with Qin's family"],
         emotional_curve=[
-            EmotionalBeat(position=0.0, emotion="压抑", intensity=0.7),
-            EmotionalBeat(position=0.3, emotion="挣扎", intensity=0.6),
-            EmotionalBeat(position=0.6, emotion="绝望", intensity=0.8),
-            EmotionalBeat(position=0.8, emotion="痛苦", intensity=0.9),
-            EmotionalBeat(position=1.0, emotion="震撼", intensity=0.95),
+            EmotionalBeat(position=0.0, emotion="Repression", intensity=0.7),
+            EmotionalBeat(position=0.3, emotion="Struggle", intensity=0.6),
+            EmotionalBeat(position=0.6, emotion="Despair", intensity=0.8),
+            EmotionalBeat(position=0.8, emotion="Pain", intensity=0.9),
+            EmotionalBeat(position=1.0, emotion="Stunny", intensity=0.95),
         ],
-        ending_hook="秦默体内的血脉觉醒后，一道古老而威严的声音在他脑海中响起：'万年了……终于等到你。'",
+        ending_hook="When Qin Mo's veins awakened, an old and powerful voice sounded in his mind: 'Twilight years ... finally wait for you'",
         word_count_target=4000,
     )
 
@@ -270,20 +270,20 @@ class TestChapterContentOutput:
     def test_valid_output(self):
         """Normal valid output should pass."""
         data = {
-            "title": "废脉少年",
-            "content": "## 第一节\n\n苍玄大陆，秦家矿区……\n\n（正文内容）",
-            "author_notes": "第一章聚焦于建立主角的困境和世界观",
+            "title": "The Boy Who Could Not Cultivate",
+            "content": "## Chapter 1\n\nQin Mo labored in a mine beneath the Azure Continent.\n\n",
+            "author_notes": "Chapter I focuses on the plight of the protagonists and the world view",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.title == "废脉少年"
-        assert "苍玄大陆" in result.content
+        assert result.title == "The Boy Who Could Not Cultivate"
+        assert "Azure Continent" in result.content
         assert result.author_notes
 
     def test_missing_author_notes(self):
         """Missing author_notes should default to empty string."""
         data = {
-            "title": "第一章",
-            "content": "正文内容",
+            "title": "Chapter I",
+            "content": "Text",
         }
         result = ChapterContentOutput.model_validate(data)
         assert result.author_notes == ""
@@ -291,70 +291,70 @@ class TestChapterContentOutput:
     def test_notes_alias(self):
         """'notes' key should map to author_notes."""
         data = {
-            "title": "第一章",
-            "content": "正文",
-            "notes": "这是作者的备注",
+            "title": "Chapter I",
+            "content": "Chapter Text",
+            "notes": "This is the author's note",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.author_notes == "这是作者的备注"
+        assert result.author_notes == "This is the author's note"
 
     def test_description_alias(self):
         """'description' key should map to author_notes."""
         data = {
-            "title": "第一章",
-            "content": "正文",
-            "description": "章节描述",
+            "title": "Chapter 1",
+            "content": "Chapter text",
+            "description": "Chapter description",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.author_notes == "章节描述"
+        assert result.author_notes == "Chapter description"
 
     def test_chinese_notes_alias(self):
         """Chinese '备注' key should map to author_notes."""
         data = {
-            "title": "第一章",
-            "content": "正文",
-            "备注": "中文备注",
+            "title": "Chapter 1",
+            "content": "Chapter text",
+            "备注": "Author note",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.author_notes == "中文备注"
+        assert result.author_notes == "Author note"
 
     def test_chinese_attached_alias(self):
         """Chinese '附注' key should map to author_notes."""
         data = {
-            "title": "第一章",
-            "content": "正文",
-            "附注": "作者附注内容",
+            "title": "Chapter 1",
+            "content": "Chapter text",
+            "附注": "Author note",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.author_notes == "作者附注内容"
+        assert result.author_notes == "Author note"
 
     def test_chinese_body_alias(self):
         """Chinese '正文' key should map to content."""
         data = {
-            "title": "第一章",
-            "正文": "这是正文内容",
+            "title": "Chapter 1",
+            "正文": "Chapter text",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.content == "这是正文内容"
+        assert result.content == "Chapter text"
 
     def test_text_alias(self):
         """'text' key should map to content."""
         data = {
-            "title": "第一章",
-            "text": "文本内容",
+            "title": "Chapter 1",
+            "text": "Text Contents",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.content == "文本内容"
+        assert result.content == "Text Contents"
 
     def test_empty_content_fallback(self):
         """Empty content with body alias should still work."""
         data = {
-            "title": "第一章",
+            "title": "Chapter I",
             "content": "",
-            "body": "真实内容在这里",
+            "body": "The truth is here",
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.content == "真实内容在这里"
+        assert result.content == "The truth is here"
 
     def test_all_empty(self):
         """All empty fields should still validate."""
@@ -367,13 +367,13 @@ class TestChapterContentOutput:
     def test_extra_fields_ignored(self):
         """Extra unknown fields should be ignored by Pydantic."""
         data = {
-            "title": "第一章",
-            "content": "正文",
+            "title": "Chapter I",
+            "content": "Chapter Text",
             "extra_field": "should be ignored",
             "another_extra": 123,
         }
         result = ChapterContentOutput.model_validate(data)
-        assert result.title == "第一章"
+        assert result.title == "Chapter I"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -398,14 +398,14 @@ class TestFactExtractionOutput:
                 {
                     "id": "fact_001",
                     "category": "world",
-                    "description": "苍玄大陆以修真为尊，凡人处于社会底层",
+                    "description": "Mankind is at the bottom of society",
                     "certainty": 1.0,
                     "source_chapter": 1,
                 },
                 {
                     "id": "fact_002",
                     "category": "character",
-                    "description": "秦默天生废脉，被家族流放至矿区",
+                    "description": "Qin Mo was born with no blood. He was exiled by his family to the mines",
                     "certainty": 1.0,
                     "source_chapter": 1,
                 },
@@ -414,9 +414,9 @@ class TestFactExtractionOutput:
                 {
                     "character_id": "char_001",
                     "attribute": "physical.power",
-                    "old_value": "凡人（废脉）",
-                    "new_value": "炼气一层（远古血脉觉醒）",
-                    "reason": "融合远古血脉传承晶石",
+                    "old_value": "Man (Waste veins)",
+                    "new_value": "Gas layer (awakening of ancient blood veins)",
+                    "reason": "It's the crystal that unites the ancient blood veins",
                 },
             ],
         }
@@ -430,40 +430,40 @@ class TestFactExtractionOutput:
         data = {
             "new_facts": [],
             "state_changes": [
-                "秦默觉醒了远古血脉",
-                "秦默的修为从凡人提升到炼气一层",
+                "Qin awakened his ancient blood",
+                "Qin Mo's renovation was from mortals to gas",
             ],
         }
         result = FactExtractionOutput.model_validate(data)
         assert len(result.state_changes) == 2
-        assert result.state_changes[0].reason == "秦默觉醒了远古血脉"
-        assert result.state_changes[1].reason == "秦默的修为从凡人提升到炼气一层"
+        assert result.state_changes[0].reason == "Qin awakened his ancient blood"
+        assert result.state_changes[1].reason == "Qin Mo's renovation was from mortals to gas"
 
     def test_new_facts_as_strings(self):
         """New facts as plain strings should be coerced to dicts (via Fact validator)."""
         data = {
             "new_facts": [
-                "苍玄大陆以修真为尊",
-                "秦默天生废脉被流放",
+                "Cultivators hold the highest status on the Azure Continent.",
+                "Qin Mo was exiled because he was born unable to cultivate.",
             ],
             "state_changes": [],
         }
         result = FactExtractionOutput.model_validate(data)
         assert len(result.new_facts) == 2
-        assert result.new_facts[0].description == "苍玄大陆以修真为尊"
-        assert result.new_facts[1].description == "秦默天生废脉被流放"
+        assert result.new_facts[0].description == "Cultivators hold the highest status on the Azure Continent."
+        assert result.new_facts[1].description == "Qin Mo was exiled because he was born unable to cultivate."
 
     def test_facts_with_chinese_keys(self):
         """Facts with Chinese keys should be normalized."""
         data = {
             "new_facts": [
-                {"描述": "测试事实", "类别": "world", "确定性": 0.8},
+                {"描述": "A test fact", "类别": "world", "确定性": 0.8},
             ],
             "state_changes": [],
         }
         result = FactExtractionOutput.model_validate(data)
         assert len(result.new_facts) == 1
-        assert result.new_facts[0].description == "测试事实"
+        assert result.new_facts[0].description == "A test fact"
         assert result.new_facts[0].category == "world"
         assert result.new_facts[0].certainty == 0.8
 
@@ -471,21 +471,21 @@ class TestFactExtractionOutput:
         """Mixed valid dicts and string items should both work."""
         data = {
             "new_facts": [
-                {"category": "plot", "description": "测试剧情"},
-                "另一个事实",
+                {"category": "plot", "description": "A plot fact"},
+                "Another fact",
             ],
             "state_changes": [
-                {"character_id": "char_001", "reason": "正常变更"},
-                "角色的状态发生了变化",
+                {"character_id": "char_001", "reason": "Routine change"},
+                "The character changed",
             ],
         }
         result = FactExtractionOutput.model_validate(data)
         assert len(result.new_facts) == 2
         assert result.new_facts[0].category == "plot"
-        assert result.new_facts[1].description == "另一个事实"
+        assert result.new_facts[1].description == "Another fact"
         assert len(result.state_changes) == 2
         assert result.state_changes[0].character_id == "char_001"
-        assert result.state_changes[1].reason == "角色的状态发生了变化"
+        assert result.state_changes[1].reason == "The character changed"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -597,7 +597,7 @@ async def test_extract_facts(writer, project_config, bible, characters, outline,
     print(f"[OK] State changes: {len(draft.character_state_changes)}")
     for sc in draft.character_state_changes:
         print(f"  - {sc.character_id}: {sc.attribute} {sc.old_value} → {sc.new_value}")
-        print(f"    原因: {sc.reason[:80]}")
+        print(f"    Reason: {sc.reason[:80]}")
 
     # Validation
     assert isinstance(draft.new_facts, list), "new_facts must be a list"
@@ -621,105 +621,105 @@ if __name__ == "__main__":
 
         # Build fixtures inline
         pc = ProjectConfig(
-            title="测试小说",
-            inspiration="一个废柴少年意外觉醒了远古血脉，在弱肉强食的修真世界一步步崛起的故事。",
-            genre=["玄幻", "修仙", "爽文"],
-            target_readers="喜欢热血升级流的男性读者",
-            tone="热血",
+            title="Test the novel",
+            inspiration="The story of a child who accidentally awakens ancient bloodlines and emerges step by step in a world where the weak and the weak eat.",
+            genre=["Fantasy", "Cultivation Fantasy", "It's a piece of shit"],
+            target_readers="A male reader who likes hot blood to escalate",
+            tone="Hot blood",
             target_word_count=90000,
         )
         world = WorldBuilding(
-            name="苍玄大陆",
+            name="Azure Continent",
             world_type="fantasy",
-            geography="九大州",
-            history="万年前仙魔大战",
-            culture="以实力为尊",
-            magic_system="修真体系",
+            geography="Nine States",
+            history="A thousand years ago, the War of the Wonders",
+            culture="It's all about strength",
+            magic_system="Truth system",
         )
         b = NovelBible(
             world=world,
             factions=[
-                Faction(name="青云宗", faction_type="sect", goal="维护正道"),
-                Faction(name="魔渊教", faction_type="cult", goal="颠覆正道"),
+                Faction(name="Green Yunzong", faction_type="sect", goal="Keep it straight"),
+                Faction(name="Heavenly Demon Sect", faction_type="cult", goal="Overthrow the orthodox sects"),
             ],
             rules=NarrativeRules(),
-            style_contract=StyleContract(tone="热血"),
-            themes=[Theme(name="逆袭成长"), Theme(name="友情与背叛")],
+            style_contract=StyleContract(tone="Hot blood"),
+            themes=[Theme(name="Growth Against the Odds"), Theme(name="Friendship and betrayal")],
             core_conflicts=[
-                CoreConflict(conflict_type="person_vs_society", description="主角被家族抛弃"),
-                CoreConflict(conflict_type="person_vs_person", description="主角与宿敌对决"),
+                CoreConflict(conflict_type="person_vs_society", description="The main character was abandoned by the family"),
+                CoreConflict(conflict_type="person_vs_person", description="The main character and Hsing are fighting each other"),
             ],
         )
         chars = CharacterRegistry(
             characters={
                 "char_001": CharacterProfile(
                     id="char_001",
-                    name="秦默",
+                    name="Qin Mo",
                     role="protagonist",
-                    personality="坚韧不拔",
-                    motivation="成为最强",
-                    flaw="过于固执",
-                    backstory="被家族流放",
+                    personality="You're tough",
+                    motivation="Be the strongest",
+                    flaw="Too stubborn",
+                    backstory="Exiled by the family",
                 ),
                 "char_002": CharacterProfile(
                     id="char_002",
-                    name="苏婉清",
+                    name="Su Wanqing",
                     role="deuteragonist",
-                    personality="外冷内热",
-                    motivation="寻找师父",
-                    flaw="不善表达",
-                    backstory="身世成谜",
+                    personality="It's cold inside",
+                    motivation="Find Master",
+                    flaw="It's not a good expression",
+                    backstory="It's a mystery",
                 ),
             }
         )
         outline = MasterOutline(
-            title="逆命九霄",
-            logline="废柴少年逆天改命",
-            main_plot=[PlotArc(name="主线", description="主角成长", arc_type="main")],
+            title="I'm not going anywhere",
+            logline="You've changed your life",
+            main_plot=[PlotArc(name="Main Plot", description="The main player grows", arc_type="main")],
             subplots=[],
-            volumes=[Volume(title="第一卷", number=1, start_chapter=1, end_chapter=10)],
+            volumes=[Volume(title="Volume I", number=1, start_chapter=1, end_chapter=10)],
             major_turning_points=[
-                TurningPoint(turning_type="inciting_incident", chapter=1, description="血脉觉醒"),
+                TurningPoint(turning_type="inciting_incident", chapter=1, description="Blood and blood awakening"),
             ],
             chapter_count=30,
         )
         plan = ChapterPlan(
             chapter_number=1,
-            title="废脉少年",
-            goal="建立主角困境和世界观",
+            title="The Boy Who Could Not Cultivate",
+            goal="Create a lead character dilemma and a worldview",
             scenes=[
                 Scene(
                     number=1,
-                    setting="秦家矿区",
+                    setting="The Qin mine",
                     pov="char_001",
                     characters_present=["char_001"],
-                    goal="展示主角卑微地位",
-                    conflict="矿工嘲笑和监工压迫",
-                    outcome="秦默眼中闪过一丝不甘",
+                    goal="Showing the low profile of the protagonist",
+                    conflict="Miners scoffing and supervision",
+                    outcome="Qinmu's eyes flashed a little bit",
                 ),
                 Scene(
                     number=2,
-                    setting="矿区深处",
+                    setting="Deep in the mine",
                     pov="char_001",
                     characters_present=["char_001"],
-                    goal="发现异常矿脉",
-                    conflict="矿洞塌方",
-                    outcome="发现远古晶石",
+                    goal="There's an unusual mine",
+                    conflict="The cave collapses",
+                    outcome="Found the ancient crystals",
                 ),
             ],
             pov_character="char_001",
-            conflict="主角内心的不甘与现实的压迫",
-            hooks=[Hook(hook_type="cliffhanger", description="古老的声音在脑海中响起")],
+            conflict="The main character's heart is indifferent to the oppression of reality",
+            hooks=[Hook(hook_type="cliffhanger", description="The old voices are ringing in my head")],
             characters_involved=["char_001"],
-            information_increment="建立世界观，引入主角困境",
-            reveals=["远古血脉的存在"],
-            foreshadowing=["血脉来源的暗示"],
+            information_increment="Create a world view, introduce the main character's dilemma",
+            reveals=["The existence of ancient veins"],
+            foreshadowing=["Indictments of blood source"],
             emotional_curve=[
-                EmotionalBeat(position=0.0, emotion="压抑", intensity=0.7),
-                EmotionalBeat(position=0.5, emotion="绝望", intensity=0.8),
-                EmotionalBeat(position=1.0, emotion="震撼", intensity=0.95),
+                EmotionalBeat(position=0.0, emotion="Repression", intensity=0.7),
+                EmotionalBeat(position=0.5, emotion="Despair", intensity=0.8),
+                EmotionalBeat(position=1.0, emotion="Stunny", intensity=0.95),
             ],
-            ending_hook="古老的声音在脑海中响起：'万年了……终于等到你。'",
+            ending_hook="The old sound in my head: 'Twilight years... finally wait for you.'",
             word_count_target=4000,
         )
         mem = MemoryState()

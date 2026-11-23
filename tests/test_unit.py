@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-# 将仓库根目录加入 sys.path，保证以任意方式运行（python -m pytest / uv run pytest）都能
-# import src.* 包，且 src 内部相对导入（from ..models import ...）正常解析。
+# Put the repository root on sys.path for python -m pytest and uv run pytest.
+# This supports src.* imports and their package-relative imports.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.llm.scheduler import _try_parse_json
@@ -30,7 +30,7 @@ class TestJsonRepair:
         assert result == data
 
     def test_valid_json_with_chinese(self):
-        data = {"title": "测试章节", "content": "正文内容很长……" * 50}
+        data = {"title": "测试章节", "content": "这是正文。" * 50}
         result = _try_parse_json(json.dumps(data, ensure_ascii=False))
         assert result["title"] == "测试章节"
 
@@ -79,7 +79,7 @@ class TestJsonRepair:
 
     def test_qwen3_style_comment_in_json(self):
         """Qwen3 sometimes copies // comments from schema prompts."""
-        raw = '{\n  "title": "test",  // 标题\n  "content": "正文"\n}'
+        raw = '{\n  "title": "test",  // Title\n  "content": "Chapter text"\n}'
         result = _try_parse_json(raw)
         # Should either parse successfully or at minimum not crash
         assert isinstance(result, (dict, type(None))) or "title" in result
@@ -98,17 +98,18 @@ class TestJsonRepair:
         assert result["a"]["b"]["c"] == [1, 2, 3]
 
     def test_qwen3_real_truncation_pattern(self):
-        """Simulates Qwen3 truncation: content string cut off mid-word."""
+        """Simulate model output ending inside an unclosed content string."""
         raw = (
             "{\n"
-            '  "title": "废脉少年",\n'
-            '  "content": "## 第一节\\n\\n秦默站在矿区深处，手中的晶石散发着诡异的光芒。'
-            "他感受到一股前所未有的力量在体内涌动，仿佛有什么东西正在苏醒。\\n\\n突然，"
-            "一道古老的声音在他脑海中响起："
+            '  "title": "The Mine",\n'
+            '  "content": "# Chapter 1\\n\\n'
+            "Qin Mo stood deep in the mine, turning a strange crystal in his hand. "
+            "An old voice stirred in his head and whis"
         )
         result = _try_parse_json(raw)
-        assert result["title"] == "废脉少年"
-        assert "秦默" in result["content"]
+        assert result["title"] == "The Mine"
+        assert "Qin Mo" in result["content"]
+
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -120,27 +121,27 @@ class TestChapterContentOutput:
     from src.agents.writer import ChapterContentOutput
 
     def test_valid(self):
-        data = {"title": "第一章", "content": "正文内容", "author_notes": "备注"}
+        data = {"title": "Chapter I", "content": "Text", "author_notes": "Remarks"}
         result = self.ChapterContentOutput.model_validate(data)
-        assert result.title == "第一章"
-        assert result.content == "正文内容"
+        assert result.title == "Chapter I"
+        assert result.content == "Text"
 
     def test_chinese_content_alias(self):
-        """'正文' should map to content, '备注' to author_notes."""
-        data = {"title": "第一章", "正文": "正文内容", "备注": "作者附注"}
+        """Recognize the legacy Chinese aliases for body text and notes."""
+        data = {"title": "Chapter I", "正文": "Text", "备注": "Author note"}
         result = self.ChapterContentOutput.model_validate(data)
-        assert result.title == "第一章"
-        assert result.content == "正文内容"
-        assert result.author_notes == "作者附注"
+        assert result.title == "Chapter I"
+        assert result.content == "Text"
+        assert result.author_notes == "Author note"
 
     def test_chinese_author_notes_alias(self):
-        """'附注' should map to author_notes."""
-        data = {"title": "第一章", "content": "内容", "附注": "附注内容"}
+        """Recognize an alternate Chinese alias for author notes."""
+        data = {"title": "Chapter I", "content": "Contents", "附注": "Contents of the note"}
         result = self.ChapterContentOutput.model_validate(data)
-        assert result.author_notes == "附注内容"
+        assert result.author_notes == "Contents of the note"
 
     def test_missing_optional_fields_default(self):
-        data = {"title": "第一章", "content": "正文"}
+        data = {"title": "Chapter I", "content": "Chapter Text"}
         result = self.ChapterContentOutput.model_validate(data)
         assert result.author_notes == ""
 
@@ -151,9 +152,9 @@ class TestChapterContentOutput:
         assert result.author_notes == ""
 
     def test_extra_fields_ignored(self):
-        data = {"title": "第一章", "content": "正文", "extra": "ignored"}
+        data = {"title": "Chapter I", "content": "Chapter Text", "extra": "ignored"}
         result = self.ChapterContentOutput.model_validate(data)
-        assert result.title == "第一章"
+        assert result.title == "Chapter I"
         assert not hasattr(result, "extra")
 
     def test_notes_alias(self):
@@ -176,22 +177,22 @@ class TestFactExtractionOutput:
 
     def test_string_facts_coerced(self):
         """Plain strings should be coerced to Fact dicts."""
-        result = self.FactExtractionOutput.model_validate({"new_facts": ["苍玄大陆以修真为尊"], "state_changes": []})
-        assert result.new_facts[0].description == "苍玄大陆以修真为尊"
+        result = self.FactExtractionOutput.model_validate({"new_facts": ["Cultivators hold the highest status on the Azure Continent."], "state_changes": []})
+        assert result.new_facts[0].description == "Cultivators hold the highest status on the Azure Continent."
 
     def test_string_state_changes_coerced(self):
         """Plain strings should be coerced to StateChange dicts."""
-        result = self.FactExtractionOutput.model_validate({"new_facts": [], "state_changes": ["秦默觉醒了远古血脉"]})
-        assert result.state_changes[0].reason == "秦默觉醒了远古血脉"
+        result = self.FactExtractionOutput.model_validate({"new_facts": [], "state_changes": ["Qin awakened his ancient blood"]})
+        assert result.state_changes[0].reason == "Qin awakened his ancient blood"
 
     def test_chinese_keys_normalized(self):
         result = self.FactExtractionOutput.model_validate(
             {
-                "new_facts": [{"描述": "测试事实", "类别": "world", "确定性": 0.8}],
+                "new_facts": [{"描述": "Test facts", "类别": "world", "确定性": 0.8}],
                 "state_changes": [],
             }
         )
-        assert result.new_facts[0].description == "测试事实"
+        assert result.new_facts[0].description == "Test facts"
         assert result.new_facts[0].category == "world"
         assert result.new_facts[0].certainty == 0.8
 
@@ -199,18 +200,18 @@ class TestFactExtractionOutput:
         result = self.FactExtractionOutput.model_validate(
             {
                 "new_facts": [
-                    {"category": "plot", "description": "剧情"},
-                    "另一个事实",
+                    {"category": "plot", "description": "It's a story"},
+                    "Another fact",
                 ],
                 "state_changes": [
-                    {"character_id": "char_001", "reason": "正常"},
-                    "角色变化",
+                    {"character_id": "char_001", "reason": "Normal"},
+                    "Role change",
                 ],
             }
         )
         assert len(result.new_facts) == 2
         assert result.new_facts[0].category == "plot"
-        assert result.new_facts[1].description == "另一个事实"
+        assert result.new_facts[1].description == "Another fact"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -223,28 +224,28 @@ class TestContentSafety:
 
     def test_clean_content_passes(self):
         checker = self.ContentSafetyChecker()
-        text = "秦默站在山巅，俯瞰苍玄大陆。风吹过他的长袍，猎猎作响。"
+        text = "Qin Mo stood on the summit. Far below, shadows crept over the valley, and the wind snapped at his robe."
         result = checker.check(text)
         assert result.passed
         assert len(result.flags) == 0
 
     def test_block_keyword_detected(self):
         checker = self.ContentSafetyChecker()
-        text = "这段内容包含做爱描写。"  # blocking keyword
+        text = "This passage includes the phrase sexual intercourse."  # blocking keyword
         result = checker.check(text)
         assert not result.passed
         assert result.block_count >= 1
 
     def test_warning_keyword_flagged(self):
         checker = self.ContentSafetyChecker()
-        text = "她露出酥胸，春光乍泄。"  # warning keyword
+        text = "The prose uses the phrase heaving bosom."  # warning keyword
         result = checker.check(text)
         assert result.passed  # Warnings don't block
         assert result.warning_count >= 1
 
     def test_multiple_flags(self):
         checker = self.ContentSafetyChecker()
-        text = "做爱描写和酥胸描写同时出现"  # block + warning
+        text = "The passage uses the phrases sexual intercourse and heaving bosom."  # block + warning
         result = checker.check(text)
         assert not result.passed
         assert result.block_count >= 1
@@ -259,28 +260,26 @@ class TestContentSafety:
     def test_long_novel_chapter_passes(self):
         checker = self.ContentSafetyChecker()
         text = (
-            "苍玄大陆，秦家矿区。黄昏的余晖洒在碎石路上，"
-            "将人影拉得很长。秦默背着装满矿石的竹篓，"
-            "粗糙的麻绳在肩头磨出血痕。他已经在这片矿区"
-            "干了整整三年的苦力，从十五岁到现在，手上的"
-            "茧子比石头还硬。" * 20
-        )
+            "The last glow of sunset stretched the shadows across the rocky road. "
+            "Qin Mo carried a bamboo basket full of ore. Three years in the mine had "
+            "left him with calluses harder than the stones he carried."
+        ) * 20
         result = checker.check(text)
         assert result.passed
 
     def test_flag_context_captured(self):
         checker = self.ContentSafetyChecker()
-        text = "剧情铺垫。" + "做爱" + "后续发展。"
+        text = "Some setup. " + "Sexual intercourse" + " is mentioned later."
         result = checker.check(text)
         assert len(result.flags) >= 1
         flag = result.flags[0]
-        assert flag.keyword == "做爱"
+        assert flag.keyword == "sexual intercourse"
         assert flag.severity == "block"
         assert len(flag.context) > 0
 
     def test_summary_formatting(self):
         checker = self.ContentSafetyChecker()
-        result = checker.check("做爱描写和酥胸描写")
+        result = checker.check("Sexual intercourse and heaving bosom")
         summary = result.summary
         assert "flag" in summary.lower() or "flag" in summary
 
@@ -289,23 +288,45 @@ class TestContentSafety:
 # Prompt Building
 # ═══════════════════════════════════════════════════════════════════════
 
+def test_english_opening_arc_fallback():
+    from src.agents.topic_scout import TopicScoutAgent
+
+    chapters, arc_goal, next_hook = TopicScoutAgent._parse_text_mini_arc(
+        "## Chapter 1\nChapter Goal: Find the key\nEnding Hook: The door opens\n\n"
+        "Chapter 2\nChapter Conflict: A guard blocks the way\n\n"
+        "Arc Summary\nArc Goal: Escape the keep\nNext Arc Hook: A hidden map"
+    )
+    assert [chapter.chapter_number for chapter in chapters] == [1, 2]
+    assert chapters[0].goal == "Find the key"
+    assert chapters[0].ending_hook == "The door opens"
+    assert chapters[1].conflict == "A guard blocks the way"
+    assert chapters[1].ending_hook == ""
+    assert (arc_goal, next_hook) == ("Escape the keep", "A hidden map")
+
+
+def test_chapter_word_count():
+    from src.utils.text import count_words
+
+    assert count_words("Don't stop.\n\n***\n\nKeep writing.") == 4
+    assert count_words("继续 写作。") == 5
+
 
 class TestPromptBuilding:
     def test_expansion_prompt_contains_targets(self):
         from src.agents.writer import _build_expansion_prompt
 
         prompt = _build_expansion_prompt(
-            content="短内容",
+            content="Short content",
             current_count=1000,
             target_count=4000,
             chapter_num=3,
-            chapter_title="测试章",
+            chapter_title="Test Chapter",
         )
         assert "4000" in prompt
         assert "1000" in prompt
-        assert "测试章" in prompt
-        assert "第3章" in prompt
-        assert "短内容" in prompt
+        assert "Test Chapter" in prompt
+        assert "Chapter 3" in prompt
+        assert "Short content" in prompt
 
     def test_expansion_prompt_has_json_instruction(self):
         from src.agents.writer import _build_expansion_prompt
@@ -328,16 +349,16 @@ class TestPromptBuilding:
         scenes = [
             Scene(
                 number=1,
-                setting="矿区",
+                setting="Mine",
                 pov="char_001",
                 characters_present=["char_001"],
-                goal="展示卑微",
-                conflict="压迫",
-                outcome="不甘",
+                goal="Show the protagonist at their lowest point",
+                conflict="Oppression",
+                outcome="I don't like it",
             ),
         ]
         result = agent._format_scenes(scenes)
-        assert "矿区" in result
+        assert "Mine" in result
 
     def test_format_emotional_curve(self):
         from src.agents.writer import WriterAgent
@@ -346,12 +367,12 @@ class TestPromptBuilding:
 
         agent = WriterAgent(ModelScheduler())
         beats = [
-            EmotionalBeat(position=0.0, emotion="压抑", intensity=0.7),
-            EmotionalBeat(position=1.0, emotion="震撼", intensity=0.95),
+            EmotionalBeat(position=0.0, emotion="Repression", intensity=0.7),
+            EmotionalBeat(position=1.0, emotion="Astonishment", intensity=0.95),
         ]
         result = agent._format_emotional_curve(beats)
-        assert "压抑" in result
-        assert "震撼" in result
+        assert "Repression" in result
+        assert "Astonishment" in result
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -425,26 +446,26 @@ class TestMasterOutlineValidation:
         from src.models.outline import PlotArc, TurningPoint, Volume
 
         outline = self.MasterOutline(
-            title="测试",
-            logline="测试",
-            main_plot=[PlotArc(name="主线", description="主线", arc_type="main")],
+            title="Test",
+            logline="Test",
+            main_plot=[PlotArc(name="Main Plot", description="Main Plot", arc_type="main")],
             subplots=[],
-            volumes=[Volume(title="卷一", number=1, start_chapter=1, end_chapter=10)],
-            major_turning_points=[TurningPoint(turning_type="inciting_incident", chapter=1, description="事件")],
+            volumes=[Volume(title="Volume I", number=1, start_chapter=1, end_chapter=10)],
+            major_turning_points=[TurningPoint(turning_type="inciting_incident", chapter=1, description="Events")],
             chapter_count=30,
         )
-        assert outline.title == "测试"
+        assert outline.title == "Test"
         assert outline.volumes[0].number == 1
 
     def test_minimal_outline_valid(self):
         from src.models.outline import PlotArc, TurningPoint, Volume
 
         outline = self.MasterOutline(
-            title="测试",
-            logline="测试",
-            main_plot=[PlotArc(name="主线", description="d", arc_type="main")],
+            title="Test",
+            logline="Test",
+            main_plot=[PlotArc(name="Main Plot", description="d", arc_type="main")],
             volumes=[Volume(title="v", number=1, start_chapter=1, end_chapter=5)],
-            major_turning_points=[TurningPoint(turning_type="inciting_incident", chapter=1, description="事件")],
+            major_turning_points=[TurningPoint(turning_type="inciting_incident", chapter=1, description="Events")],
             chapter_count=10,
         )
         assert outline.chapter_count == 10
@@ -454,14 +475,14 @@ class TestFactModel:
     from src.models.chapter import Fact
 
     def test_string_coerced(self):
-        fact = self.Fact.model_validate("苍玄大陆以修真为尊")
-        assert fact.description == "苍玄大陆以修真为尊"
+        fact = self.Fact.model_validate("Cultivators hold the highest status on the Azure Continent.")
+        assert fact.description == "Cultivators hold the highest status on the Azure Continent."
         # Default category when coerce from string
         assert fact.category in ("world", "other")
 
     def test_dict_with_chinese_keys(self):
-        fact = self.Fact.model_validate({"描述": "测试事实", "类别": "character", "确定性": 0.9})
-        assert fact.description == "测试事实"
+        fact = self.Fact.model_validate({"描述": "Test facts", "类别": "character", "确定性": 0.9})
+        assert fact.description == "Test facts"
         assert fact.category == "character"
         assert fact.certainty == 0.9
 
@@ -515,12 +536,10 @@ class TestFileManager:
         assert fm.project_id == "proj_001"
 
     def test_path_with_windows_style(self):
-        from pathlib import Path
-
         from src.storage.file_manager import ProjectFileManager
 
         fm = ProjectFileManager("D:\\novels", "test-project")
-        # Windows 上 \ 是分隔符，POSIX 上反斜杠是普通字符，统一归一化后比较
+        # Normalize separators before comparing across platforms.
         assert str(fm.root).replace("\\", "/") == "D:/novels/projects/test-project"
 
     def test_exists_returns_false_for_new_project(self):
@@ -541,11 +560,11 @@ class TestFileManager:
         with tempfile.TemporaryDirectory() as td:
             fm = ProjectFileManager(td, "init_test")
             config = ProjectConfig(
-                title="测试",
-                inspiration="测试",
-                genre=["玄幻"],
-                target_readers="读者",
-                tone="热血",
+                title="Test",
+                inspiration="Test",
+                genre=["Fantasy"],
+                target_readers="Readers",
+                tone="High-energy adventure",
             )
             fm.initialize(config)
             assert fm.exists()
@@ -635,14 +654,14 @@ class TestCharacterModels:
 
         char = CharacterProfile(
             id="char_001",
-            name="秦默",
+            name="Qin Mo",
             role="protagonist",
-            personality="坚韧",
-            motivation="变强",
-            flaw="固执",
-            backstory="被流放",
+            personality="Strong",
+            motivation="Stronger",
+            flaw="Stubborn",
+            backstory="Exiled",
         )
-        assert char.name == "秦默"
+        assert char.name == "Qin Mo"
         assert char.role == "protagonist"
 
     def test_character_registry(self):
@@ -652,32 +671,32 @@ class TestCharacterModels:
             characters={
                 "c1": CharacterProfile(
                     id="c1",
-                    name="主角",
+                    name="Lead",
                     role="protagonist",
-                    personality="勇敢",
-                    motivation="复仇",
-                    flaw="傲慢",
-                    backstory="孤儿",
+                    personality="Brave",
+                    motivation="Revenge",
+                    flaw="Arrogance",
+                    backstory="Orphans",
                 ),
             }
         )
         assert "c1" in reg.characters
-        assert reg.characters["c1"].name == "主角"
+        assert reg.characters["c1"].name == "Lead"
 
 
 class TestBibleModels:
     def test_world_building_minimal(self):
         from src.models.bible import WorldBuilding
 
-        w = WorldBuilding(name="测试大陆", world_type="fantasy")
-        assert w.name == "测试大陆"
+        w = WorldBuilding(name="Test Continent", world_type="fantasy")
+        assert w.name == "Test Continent"
         assert w.world_type == "fantasy"
 
     def test_faction_creation(self):
         from src.models.bible import Faction
 
-        f = Faction(name="青云宗", faction_type="sect", goal="维护正道")
-        assert f.name == "青云宗"
+        f = Faction(name="Azure Cloud Sect", faction_type="sect", goal="Uphold the righteous path")
+        assert f.name == "Azure Cloud Sect"
         assert f.faction_type == "sect"
 
     def test_novel_bible_minimal(self):
@@ -692,15 +711,15 @@ class TestBibleModels:
         )
 
         bible = NovelBible(
-            world=WorldBuilding(name="大陆", world_type="fantasy"),
-            factions=[Faction(name="宗门", faction_type="sect", goal="正道")],
+            world=WorldBuilding(name="Continental", world_type="fantasy"),
+            factions=[Faction(name="Azure Cloud Sect", faction_type="sect", goal="The right path")],
             rules=NarrativeRules(),
-            style_contract=StyleContract(tone="热血"),
-            themes=[Theme(name="成长")],
-            core_conflicts=[CoreConflict(conflict_type="person_vs_society", description="抗争")],
+            style_contract=StyleContract(tone="High-energy adventure"),
+            themes=[Theme(name="Grow")],
+            core_conflicts=[CoreConflict(conflict_type="person_vs_society", description="Protest")],
         )
         assert len(bible.factions) == 1
-        assert bible.style_contract.tone == "热血"
+        assert bible.style_contract.tone == "High-energy adventure"
         assert len(bible.themes) == 1
 
 

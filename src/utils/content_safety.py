@@ -2,7 +2,7 @@
 
 Implements the evaluation report's 4-week requirement #3:
 Basic content safety keyword/pattern filtering aligned with target
-platform (起点/番茄/飞卢) content review standards.
+Photo by Flickr user pic.twitter.com/Fanqi/Feilu
 
 Checks:
 - Explicit sexual content / erotica
@@ -16,6 +16,7 @@ with pass/fail and flagged segments for human review.
 """
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -104,7 +105,14 @@ class ContentSafetyChecker:
             "淫乱",
             "性奴",
             "性虐待",
-            # Explicit sexual acts (English/romanized)
+            # English equivalents
+            "sexual intercourse",
+            "oral sex",
+            "anal sex",
+            "rape",
+            "incest",
+            "sex slave",
+            "sexual abuse",
         ],
         "violence": [
             # Extreme gore / torture
@@ -112,12 +120,18 @@ class ContentSafetyChecker:
             "剥皮",
             "活体解剖",
             "凌迟",
+            "dismemberment",
+            "flaying",
+            "vivisection",
+            "death by a thousand cuts",
         ],
         "political": [
             # Politically sensitive — platform ban risk
             "法轮功",
             "六四",
             "天安门事件",
+            "Falun Gong",
+            "Tiananmen incident",
         ],
     }
 
@@ -137,6 +151,8 @@ class ContentSafetyChecker:
             "双修",
             "采补",
             "炉鼎",
+            "heaving bosom",
+            "dual cultivation",
         ],
         "violence": [
             # Graphic violence descriptors
@@ -145,12 +161,20 @@ class ContentSafetyChecker:
             "开膛破肚",
             "尸横遍野",
             "血流成河",
+            "mangled flesh",
+            "brains splattered",
+            "disemboweled",
+            "bodies littered the ground",
+            "rivers of blood",
         ],
         "platform": [
             # Terms that trigger platform auto-review
             "色情",
             "黄色小说",
             "成人内容",
+            "pornography",
+            "erotic novel",
+            "adult content",
         ],
     }
 
@@ -209,7 +233,7 @@ class ContentSafetyChecker:
     def check_with_correction(self, text: str, chapter_number: int = 0) -> tuple[SafetyResult, str | None]:
         """Check content and optionally suggest corrected text.
 
-        For warning-level flags, replaces flagged terms with [内容已编辑]
+        For warning-level flags, replaces flagged terms with [Content edited]
         markers. For block-level flags, returns None for corrected text
         (chapter must be rewritten).
 
@@ -231,7 +255,7 @@ class ContentSafetyChecker:
             if flag.severity == "warning":
                 start = flag.position
                 end = start + len(flag.keyword)
-                corrected = corrected[:start] + "[内容已编辑]" + corrected[end:]
+                corrected = corrected[:start] + "[Content edited]" + corrected[end:]
 
         return result, corrected
 
@@ -240,17 +264,10 @@ class ContentSafetyChecker:
     @staticmethod
     def _find_matches(text: str, keyword: str) -> list[int]:
         """Find all positions of a keyword in text (case-insensitive)."""
-        positions = []
-        start = 0
-        text_lower = text.lower()
-        kw_lower = keyword.lower()
-        while True:
-            pos = text_lower.find(kw_lower, start)
-            if pos == -1:
-                break
-            positions.append(pos)
-            start = pos + 1
-        return positions
+        pattern = re.escape(keyword)
+        if keyword.isascii():
+            pattern = rf"\b{pattern}\b"
+        return [match.start() for match in re.finditer(rf"(?={pattern})", text, re.IGNORECASE)]
 
     @classmethod
     def _extract_context(cls, text: str, pos: int, kw_len: int) -> str:

@@ -1,34 +1,22 @@
 {# Memory Manager — update_memory user prompt #}
-请分析以下章节，更新故事记忆：
+Update the story memory for Chapter {{ chapter_number }}: {{ chapter_title }}.
 
-【第{{ chapter_number }}章】{{ chapter_title }}
+Chapter excerpt: {{ chapter_excerpt }}
 
-【章节摘要（供参考）】{{ chapter_excerpt }}
-
-【本章新增事实】
+New facts:
 {{ facts_text }}
 
-【角色状态变化】
+Character state changes:
 {{ state_changes_text }}
 
-【上一章摘要】{{ prev_summary }}
+Previous chapter summary: {{ prev_summary }}
 
-【活跃伏笔】
+Active foreshadowing:
 {{ prev_foreshadowing }}
 
-请生成：
-
-1. **本章摘要**（200字以内，概括本章核心事件和推进）
-
-2. **时间线事件**：
-   - 提取本章中的重要时间线事件（1-3个）
-   - 每个事件标注：在故事内的时间、描述、涉及角色、重要性
-
-3. **伏笔更新**：
-   - 新增伏笔（本章埋下的新伏笔）
-   - 推进已有伏笔（如有）
-   - 回收伏笔（如有）
-
-4. **世界观变化**：本章是否改变了世界观状态
-
-5. **未解决问题**：本章留下了什么未解决的问题或线索
+Produce:
+1. A chapter summary of at most 200 words covering key events and developments.
+2. One to three important timeline events, with in-world time, description, characters, and importance.
+3. Foreshadowing updates for new setups, developments, and payoffs.
+4. Changes to the state of the world.
+5. Unresolved questions or clues left by the chapter.

@@ -39,7 +39,7 @@ class ConsistencyOutput(BaseModel):
 class AiFlavorOutput(BaseModel):
     """LLM output for AI-flavor detection."""
 
-    score: float = Field(default=8.0, ge=0.0, le=10.0, description="AI味评分（越高越自然）")
+    score: float = Field(default=8.0, ge=0.0, le=10.0, description="Naturalness score (higher is more natural)")
     issues: list[Issue] = Field(default_factory=list)
 
 
@@ -81,8 +81,8 @@ class EditorAgent(BaseAgent):
 
         # Combine into a comprehensive review
         system_default = self.build_system_prompt(
-            role="主编审",
-            expertise="对小说章节进行全面的质量审查。你能从多个维度给出精准的评分和有建设性的修改建议。",
+            role="lead fiction editor",
+            expertise="Review novel chapters across multiple dimensions, score them accurately, and give constructive revision suggestions.",
         )
 
         all_issues = consistency_issues + pacing_issues + style_issues + ai_flavor_result.issues
@@ -97,35 +97,30 @@ class EditorAgent(BaseAgent):
             "emotional_curve": str([(b.position, b.emotion) for b in chapter_plan.emotional_curve]),
             "ending_hook": chapter_plan.ending_hook,
             "chapter_text": chapter_text,
-            "issues_text": issues_text or "无特定问题",
+            "issues_text": issues_text or "No specific issues",
         }
 
-        user_default = f"""请对第{draft.chapter_number}章进行综合评审：
+        user_default = f"""Review Chapter {draft.chapter_number}.
 
-【章节目标】{chapter_plan.goal}
-【预期情绪曲线】{[(b.position, b.emotion) for b in chapter_plan.emotional_curve]}
-【章末钩子设计】{chapter_plan.ending_hook}
+Goal: {chapter_plan.goal}
+Planned emotional curve: {str([(b.position, b.emotion) for b in chapter_plan.emotional_curve])}
+Planned ending hook: {chapter_plan.ending_hook}
 
-【本章全文】
+Full chapter:
 {chapter_text}
 
-【各维度专项检查发现的问题】
-{issues_text or "无特定问题"}
+Issues from specialized checks:
+{issues_text or 'No specific issues'}
 
-请给出：
-1. 总体评分（0-10，请严格打分，不要给面子）
-2. 各维度评分：
-   - consistency: 设定一致性
-   - character: 角色行为一致性
-   - pacing: 节奏
-   - hook: 爽点/钩子效果
-   - style: 文风稳定性
-   - ai_flavor: AI味程度（越高越自然）
-3. 主要问题列表（按严重程度排序）
-4. 本章优点
-5. 改进建议（具体可操作）
+Give an overall score (0–10) and individual scores for:
+- consistency: Continuity with established facts and rules
+- character: Consistency of characterization
+- pacing: Narrative pace
+- hook: Effectiveness of payoffs and hooks
+- style: Consistency of prose style
+- ai_flavor: Naturalness of the prose (higher is more natural)
 
-注意：评分要客观，有问题就指出，不要过度赞美。"""
+List major issues in order of severity, describe what works, and give actionable revisions. Score objectively and identify problems directly."""
 
         system, user = self.render_prompts(
             "review_chapter",
@@ -180,9 +175,8 @@ class EditorAgent(BaseAgent):
     ) -> list[Issue]:
         """Check world setting and character behavior consistency."""
         system = self.build_system_prompt(
-            role="一致性检查员",
-            expertise="你有一双挑剔的眼睛，能发现小说中任何与设定、前文或角色性格不一致的地方。"
-            "你会被给予完整的世界观规则、角色档案、已知事实和本章全文，请逐项比对。",
+            role="story continuity editor",
+            expertise="Compare the chapter with the world rules, character profiles, and known facts to identify inconsistencies.",
         )
 
         # Build known facts summary (increase from 20 to 50)
@@ -193,21 +187,16 @@ class EditorAgent(BaseAgent):
 
         chapter_text = self._chapter_excerpt(draft.content)
 
-        user = f"""检查以下章节是否存在一致性问题：
+        user = f"""Check this chapter for continuity problems.
 
-【世界观规则】{bible.rules.model_dump_json() if bible.rules else "无特定规则"}
-【角色性格摘要】{self._format_character_briefs(characters)}
-【已知事实（前50条）】{known_facts or "无（第一章）"}
+World rules: {bible.rules.model_dump_json() if bible.rules else "None specified"}
+Character summaries: {self._format_character_briefs(characters)}
+Known facts (up to 50): {known_facts or "None (first chapter)"}
 
-【本章全文】
+Chapter text:
 {chapter_text}
 
-请逐项找出：
-- 与世界观设定矛盾的地方（如魔法规则被打破）
-- 角色行为不符合其性格/动机的地方
-- 与已知事实冲突的地方（新事实与旧事实矛盾）
-- 时间线或因果关系问题
-- 即使很小的不一致也请列出"""
+Identify violations of world rules, behavior that conflicts with a character's traits or motives, contradictions with known facts, and problems with chronology or causality. Include even minor inconsistencies."""
 
         result = await self.generate_structured(
             system_prompt=system,
@@ -225,29 +214,23 @@ class EditorAgent(BaseAgent):
     ) -> list[Issue]:
         """Check narrative pacing."""
         system = self.build_system_prompt(
-            role="节奏分析员",
-            expertise="分析小说章节的叙事节奏。能判断场景推进速度是否合理，"
-            "情绪起伏是否有层次，是否出现拖沓或过快的段落。",
+            role="narrative pacing editor",
+            expertise="Assess scene pacing and emotional variation. Identify passages that drag or rush important events.",
         )
 
         chapter_text = self._chapter_excerpt(draft.content)
 
-        user = f"""分析以下章节的叙事节奏：
+        user = f"""Review the chapter's pacing.
 
-【规划的场景数】{len(chapter_plan.scenes)}
-【规划的情绪曲线】{[(b.position, b.emotion, b.intensity) for b in chapter_plan.emotional_curve]}
-【目标字数】{chapter_plan.word_count_target}
-【实际字数】{draft.word_count}
+Planned scenes: {len(chapter_plan.scenes)}
+Planned emotional curve: {[(b.position, b.emotion, b.intensity) for b in chapter_plan.emotional_curve]}
+Target words: {chapter_plan.word_count_target}
+Actual words: {draft.word_count}
 
-【本章全文】
+Chapter text:
 {chapter_text}
 
-请逐场景检查：
-- 节奏是否合理（每个场景的篇幅是否与其重要性匹配）
-- 场景转换是否自然（硬切换还是有机过渡）
-- 情绪起伏是否符合规划（高潮是否给够篇幅和张力）
-- 是否有拖沓段落（描写过多但无推进）
-- 是否有过快的段落（重要情节点一笔带过）"""
+Check scene by scene. Does the length of each scene match its importance? Do transitions feel natural and do the emotional beats follow the plan? Point out passages that drag or rush important developments."""
 
         result = await self.generate_structured(
             system_prompt=system,
@@ -265,31 +248,24 @@ class EditorAgent(BaseAgent):
         """Check writing style stability against the style contract."""
         style = bible.style_contract
         system = self.build_system_prompt(
-            role="文风检查员",
-            expertise="精确判断小说文本是否遵守了文风契约。能发现句式重复、用词不当、语调偏离等问题。",
+            role="prose style editor",
+            expertise="Check the prose against the style contract, including word choice, repetition, and tone.",
         )
 
         chapter_text = self._chapter_excerpt(draft.content, max_chars=4000)
 
-        user = f"""检查以下章节是否符合文风契约：
+        user = f"""Check whether the chapter follows the style contract.
 
-【文风契约】
-- 语调：{style.tone}
-- 句式风格：{style.sentence_style}
-- 叙事距离：{style.narrative_distance}
-- 禁用表达：{style.forbidden_phrases}
-- 推荐技法：{style.preferred_techniques}
+Tone: {style.tone}
+Sentence style: {style.sentence_style}
+Narrative distance: {style.narrative_distance}
+Expressions to avoid: {style.forbidden_phrases}
+Recommended techniques: {style.preferred_techniques}
 
-【本章全文】
+Chapter text:
 {chapter_text}
 
-请逐项找出：
-- 句式重复（如连续使用相同句式结构，连续三句以上即为问题）
-- 用词不当或滥用（同一词汇在近距离内反复出现）
-- 语调偏离（如应该沉重的场景写得轻佻）
-- 出现了禁用表达（逐一列出）
-- 对话/描写比例是否合理
-- 叙事距离是否一致（如突然从受限视角跳到全知视角）"""
+Check for repetitive sentence structures (three or more in a row), words repeated too closely, inappropriate shifts in tone, prohibited expressions, an imbalanced dialogue-to-description ratio, and inconsistent narrative distance."""
 
         result = await self.generate_structured(
             system_prompt=system,
@@ -302,30 +278,20 @@ class EditorAgent(BaseAgent):
     async def detect_ai_flavor(self, draft: ChapterDraft) -> AiFlavorOutput:
         """Detect AI-generated text patterns."""
         system = self.build_system_prompt(
-            role="AI文本检测专家",
-            expertise="你能精确识别AI生成文本的典型特征：机械的过渡词、过于工整的结构、"
-            "缺乏真实情感波动、套路化的表达方式、过度使用某些连接词等。",
+            role="fiction editor who detects formulaic prose",
+            expertise="Identify formulaic transitions, repetitive structure, flat emotions, stock phrasing, and overused conjunctions.",
         )
 
         chapter_text = self._chapter_excerpt(draft.content, max_chars=3000)
 
-        user = f"""请分析以下文本的"AI味"程度：
+        user = f"""Assess how formulaic this prose sounds.
 
-【文本】
+Text:
 {chapter_text}
 
-AI味常见特征：
-- 「综上所述」「值得注意的是」「在...的过程中」「不仅...而且...」等机械表达
-- 段落结构过于工整（总是总分总、问题-分析-结论）
-- 情感描写空洞（「他感到一阵XX」而不是通过行动展示）
-- 对话过于功能化（角色说的话都是为推进剧情服务，缺乏个性）
-- 过渡词滥用（「然而」「因此」「与此同时」过度使用）
-- 描写过于平均（每个场景都分配了差不多的字数，缺乏重点）
-- 角色对话每个人都用同样的句式结构
+Look for stock transitions, repetitive paragraph structures, emotions named without supporting actions, interchangeable or overly functional dialogue, and uniformly paced scenes. Examples include "in summary," "it is worth noting," "in the process of," and "not only ... but also."
 
-请给出：
-1. AI味评分（0=完全像AI写的, 10=完全自然的人类写作）
-2. 具体的问题段落（引用原文）和修改建议"""
+Score the prose from 0 (highly formulaic) to 10 (fully natural), cite specific passages, and suggest revisions."""
 
         result = await self.generate_structured(
             system_prompt=system,
@@ -343,7 +309,7 @@ AI味常见特征：
         """Format brief character descriptions."""
         lines = []
         for cid, char in characters.characters.items():
-            lines.append(f"- [{cid}] {char.name}: {char.personality[:80]} | 动机: {char.motivation[:60]}")
+            lines.append(f"- [{cid}] {char.name}: {char.personality[:80]} | Motivation: {char.motivation[:60]}")
         return "\n".join(lines)
 
     def _summarize_chapter(self, draft: ChapterDraft) -> str:
