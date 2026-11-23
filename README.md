@@ -28,7 +28,7 @@
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/HuangLeijiana/novel-agent.git
+git clone https://github.com/StoryHack/novel-agent-en.git
 cd novel-agent
 uv sync
 ```
