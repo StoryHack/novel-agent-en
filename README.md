@@ -70,6 +70,25 @@ Open **http://127.0.0.1:8000** in your browser.
 3. Watch as agents collaborate: outline → characters → chapters → review → polish
 4. Export finished chapters as `.docx`
 
+### Import Wattpad and Royal Road research
+
+1. In **Workspace**, click **Import Research**. This opens the form and creates a draft project if needed.
+2. Click **Load Sample CSV** and keep both synthetic rows to try the full flow. For your own research, replace the example rows with observations from an English-language Wattpad genre or tag list or from Royal Road's Rising Stars or Best Rated. Record the exact list and date. Use short notes in your own words.
+3. Click **Analyze Snapshots**. Check the counts, lists, and dates, then click **Continue to Topic Research**.
+4. Select a concept, generate and edit its title and synopsis, then confirm to generate an opening arc. To start worldbuilding directly, choose **Skip to Writing** in the import form.
+
+The six required CSV columns are `platform,list_name,source_url,captured_on,story_url,title`. Use `wattpad` or `royal_road`, an ISO date such as `2026-01-01`, and HTTPS platform links. Use the main story page URL with its numeric story ID. Optional columns are `filters,language,fiction_type,rank,tags,reads,votes,views,followers,rating,note`. Use `en` when the story language is known, separate tags with `|`, and quote cells containing commas. Optional cells may be blank. Enter counts as whole numbers and ratings on a 0–5 scale. Keep one story row per list and date. The same work can appear on other lists.
+
+```csv
+platform,list_name,source_url,captured_on,story_url,title,language,rank,tags,note
+wattpad,Fantasy example,https://www.wattpad.com/,2026-01-01,https://www.wattpad.com/story/101-example,Example Moon Garden,en,3,Fantasy|Romance,A gardener inherits a moonlit estate.
+royal_road,Rising Stars example,https://www.royalroad.com/fictions/rising-stars,2026-01-01,https://www.royalroad.com/fiction/201/example,Example Clockwork Map,en,,Fantasy|Progression,A map grows as its maker completes challenges.
+```
+
+Each validated import replaces the project's staged snapshot on disk. An active run and its retries keep the snapshot pinned at start. Choose **Replace Snapshot** at the scan confirmation to apply a new import to that run. **Skip to Writing** bypasses the staged snapshot. The default workflow checkpointer is in memory, so after a server restart the saved import can be used to start research again. Earlier project artifacts and old checkpoint fields retain their original source labels.
+
+List observations describe a dated sample. Platform counts have different meanings, and missing values stay unknown. Topic scores average six creative dimensions and, when available, one market dimension made from the mean of the supported platform-fit scores. Each platform assessment requires cited English-language observations. Listing metadata can inform positioning and a promised payoff. Actual chapter structure stays unknown from a listing. The app uses the imported data and opens provenance links on request. It has no live collection dependency.
+
 ## Architecture
 
 ```

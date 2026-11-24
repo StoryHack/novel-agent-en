@@ -137,7 +137,7 @@ async def _run_phase(state: MainState, config: dict, phase: str, executor_fn) ->
         heartbeat_stop.set()
         heartbeat_task.cancel()
 
-    phase_data = get_phase_data(state, phase)
+    phase_data = get_phase_data(updated, phase)
     await ws.broadcast_phase_update(project_id, phase, 1.0, f"{label} complete")
     await ws.broadcast_phase_complete(project_id, phase, phase_data)
     return updated
@@ -153,6 +153,22 @@ def _make_confirm_node(phase: str):
         # which broadcasts phase_blocked). On resume, returns the payload.
         resume = interrupt({"phase": phase, "action": "confirm"})
         state = apply_inspiration(state, resume)
+        if phase == "topic_selection" and isinstance(resume, dict) and state.topic_research:
+            genre = resume.get("genre_name")
+            if genre:
+                research = state.topic_research
+                research.selected_genres = [genre]
+                if resume.get("selected_title"):
+                    from ..models.topic import TitleSynopsisReport
+
+                    previous = next((item for item in research.title_synopsis if item.genre_name == genre), None)
+                    selected = previous or TitleSynopsisReport(genre_name=genre)
+                    selected.final_title = resume["selected_title"]
+                    if resume.get("selected_synopsis"):
+                        selected.final_synopsis = resume["selected_synopsis"]
+                    research.title_synopsis = [selected] + [
+                        item for item in research.title_synopsis if item.genre_name != genre
+                    ]
         logger.info("Human confirmed phase %s for project %s", phase, project_id)
         return state.model_dump()
 
@@ -190,7 +206,7 @@ async def project_init_node(state: MainState, config: RunnableConfig | None = No
 
 
 async def platform_scan_work_node(state: MainState, config: RunnableConfig | None = None) -> dict[str, Any]:
-    """Phase 0a: Platform scanning (consumes pending scan data)."""
+    """Phase 0a: Report the research snapshot pinned to this run."""
     from ..api.phase_executor import execute_phase_platform_scan
 
     state = await _run_phase(state, config, "platform_scan", execute_phase_platform_scan)

@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from ..models.bible import CoreConflict, Faction, NarrativeRules, NovelBible, StyleContract, Theme, WorldBuilding
 from ..models.chapter import ChapterDraft, PolishedChapter
@@ -9,6 +10,7 @@ from ..models.characters import CharacterRegistry
 from ..models.memory import MemoryState
 from ..models.outline import ChapterPlan, MasterOutline, TurningPoint, Volume
 from ..models.project import ProjectConfig, ProjectMeta
+from ..models.research import ResearchImport
 from ..models.review import ReviewReport
 from .serializers import DocxSerializer, MarkdownSerializer, YamlSerializer
 
@@ -307,6 +309,25 @@ class ProjectFileManager:
     # ================================================================
     # Topic Research (Phase 0)
     # ================================================================
+
+    def save_research_import(self, research: ResearchImport) -> None:
+        """Stage a complete replacement for the project's next research run."""
+        path = self.root / "topic_research" / "import.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with NamedTemporaryFile(dir=path.parent, delete=False, mode="w", encoding="utf-8") as file:
+            temp_path = Path(file.name)
+            try:
+                file.write(research.model_dump_json())
+                file.close()
+                temp_path.replace(path)
+            finally:
+                temp_path.unlink(missing_ok=True)
+
+    def load_research_import(self) -> ResearchImport | None:
+        path = self.root / "topic_research" / "import.json"
+        if not path.exists():
+            return None
+        return ResearchImport.model_validate_json(path.read_text(encoding="utf-8"))
 
     def save_mini_arc_outlines(self, outlines: dict) -> None:
         """Save mini-arc outlines (Phase 0c output)."""

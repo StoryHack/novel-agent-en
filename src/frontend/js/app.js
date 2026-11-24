@@ -7,6 +7,7 @@ const App = {
     _assistantContext: null,
     _projects: [],
     _workflowDone: false,
+    _scanAwaitingConfirmation: false,
     _pipelineState: {},  // step -> 'pending' | 'active' | 'running' | 'done'
 
     async init() {
@@ -122,6 +123,12 @@ const App = {
             const meta = p.meta;
             if (meta && meta.current_phase && meta.current_phase !== 'idle') {
                 this._restorePipelineState(meta);
+            }
+            if (p.awaiting_confirmation) {
+                this._renderPhaseResult(p.awaiting_confirmation.step, p.awaiting_confirmation.data);
+                this._showPhaseConfirmation(p.awaiting_confirmation.phase);
+                const controls = document.getElementById(`${p.awaiting_confirmation.step}-confirm-area`);
+                if (controls) controls.style.display = 'flex';
             }
         } catch(e) { /* ignore */ }
         this._navigate('workspace');
@@ -289,30 +296,58 @@ const App = {
     },
 
     async submitScan() {
-        if (!this.currentProjectId) return;
-        const feiluHtml = document.getElementById('scan-feilu')?.value || '';
-        const fanqieHtml = document.getElementById('scan-fanqie')?.value || '';
-        if (!feiluHtml && !fanqieHtml) { alert('Paste rankings from at least one platform.'); return; }
+        const projectId = this.currentProjectId;
+        if (!projectId) return;
+        const csv = document.getElementById('scan-csv').value.trim();
+        const status = document.getElementById('scan-status');
+        if (!csv) {
+            status.textContent = 'Paste a CSV with at least one story observation.';
+            return;
+        }
+        const submit = document.getElementById('btn-submit-scan');
+        submit.disabled = true;
         try {
-            this._updatePipelineBadge('scan', 'running');
-            document.getElementById('scan-input-area').style.display = 'none';
-            document.getElementById('btn-start-scan').style.display = 'none';
-            await API.submitScan(this.currentProjectId, feiluHtml || null, fanqieHtml || null);
-            await API.startWorkflow(this.currentProjectId);
-        } catch (err) { alert(`Submission failed: ${err.message}`); }
+            await API.submitScan(projectId, csv);
+            if (projectId !== this.currentProjectId) return;
+            if (this._scanAwaitingConfirmation) {
+                await API.retryPhase(projectId, 'platform_scan', null, true);
+                return;
+            }
+            status.textContent = 'Snapshot saved. Starting analysis…';
+            const run = await API.startWorkflow(projectId);
+            if (projectId === this.currentProjectId && run.status !== 'started') {
+                status.textContent = 'Snapshot saved for the next research run. The current run keeps its original evidence.';
+            }
+        } catch (err) {
+            if (projectId === this.currentProjectId) status.textContent = err.message;
+        } finally {
+            submit.disabled = false;
+        }
     },
 
-    /** Skip scan and go directly to bible construction */
-    async skipScan() {
-        if (!this.currentProjectId) return;
-        this._updatePipelineBadge('scan', 'done');
-        this._updatePipelineBadge('bible', 'active');
-        try { await API.startWorkflow(this.currentProjectId); }
-        catch (err) { alert(`Could not start: ${err.message}`); }
+    async confirmResearch() {
+        const status = document.getElementById('scan-status');
+        try {
+            await API.confirmPhase(this.currentProjectId, null);
+            this._scanAwaitingConfirmation = false;
+            document.getElementById('scan-confirm-area').style.display = 'none';
+            this._updatePipelineBadge('topic', 'active');
+        } catch (err) {
+            status.textContent = err.message;
+        }
     },
 
-    /** Initialize pipeline — first step is scan with "Scan Rankings" button */
+    fillResearchExample() {
+        document.getElementById('scan-csv').value = [
+            'platform,list_name,source_url,captured_on,story_url,title,language,rank,tags,note',
+            'wattpad,Fantasy example,https://www.wattpad.com/,2026-01-01,https://www.wattpad.com/story/101-example,Example Moon Garden,en,3,Fantasy|Romance,A gardener inherits a moonlit estate.',
+            'royal_road,Rising Stars example,https://www.royalroad.com/fictions/rising-stars,2026-01-01,https://www.royalroad.com/fiction/201/example,Example Clockwork Map,en,,Fantasy|Progression,A map grows as its maker completes challenges.',
+        ].join('\n');
+    },
+
+    /** Initialize the writing pipeline for the current project. */
     _initPipeline() {
+        this._scanAwaitingConfirmation = false;
         const steps = ['scan','topic','arc','bible','chars','outline','write'];
         steps.forEach(s => { this._pipelineState[s] = 'pending'; });
         this._updatePipelineBadge('scan', 'active');
@@ -321,7 +356,10 @@ const App = {
         if (btnStart) btnStart.style.display = '';
         const scanInput = document.getElementById('scan-input-area');
         if (scanInput) scanInput.style.display = 'none';
-        ['scan-result-area','topic-candidates-area','topic-synopsis-cards','topic-ai-area',
+        document.getElementById('scan-csv').value = '';
+        document.getElementById('scan-status').textContent = '';
+        document.getElementById('topic-evidence-area').replaceChildren();
+        ['scan-result-area','scan-confirm-area','topic-candidates-area','topic-synopsis-cards','topic-ai-area',
          'topic-confirm-area','arc-result-area','arc-confirm-area',
          'bible-result-area','bible-confirm-area','chars-result-area','chars-confirm-area',
          'outline-result-area','outline-confirm-area','write-result-area'].forEach(id => {
@@ -340,7 +378,7 @@ const App = {
             else if (status === 'done') stepEl.classList.add('done');
         }
         if (badgeEl) {
-            const labels = { scan:'Platform Rankings', topic:'Topic Research', arc:'Opening Arc Outline', bible:'Worldbuilding', chars:'Character Creation', outline:'Outline Generation', write:'Chapter Writing' };
+            const labels = { scan:'Research Snapshots', topic:'Topic Research', arc:'Opening Arc Outline', bible:'Worldbuilding', chars:'Character Creation', outline:'Outline Generation', write:'Chapter Writing' };
             const statusLabels = { pending:'Pending', active:'Current step', running:'Running...', done:'Complete ✓' };
             badgeEl.textContent = statusLabels[status] || status;
             badgeEl.className = 'pipeline-badge ' + (status === 'done' ? 'done' : status === 'running' ? 'running' : status === 'active' ? 'active' : '');
@@ -373,14 +411,18 @@ const App = {
     /** Skip scan and go directly to bible construction */
     async skipScan() {
         if (!this.currentProjectId) return;
-        this._updatePipelineBadge('scan', 'done');
-        this._updatePipelineBadge('topic', 'done');
-        this._updatePipelineBadge('arc', 'done');
-        this._updatePipelineBadge('bible', 'active');
-        document.getElementById('btn-start-scan').style.display = 'none';
-        document.getElementById('scan-input-area').style.display = 'none';
-        try { await API.startWorkflow(this.currentProjectId); }
-        catch (err) { alert(`Could not start: ${err.message}`); }
+        try {
+            const run = await API.startWorkflow(this.currentProjectId, true);
+            if (run.status !== 'started') return;
+            this._updatePipelineBadge('scan', 'done');
+            this._updatePipelineBadge('topic', 'done');
+            this._updatePipelineBadge('arc', 'done');
+            this._updatePipelineBadge('bible', 'active');
+            document.getElementById('btn-start-scan').style.display = 'none';
+            document.getElementById('scan-input-area').style.display = 'none';
+        } catch (err) {
+            document.getElementById('scan-status').textContent = err.message;
+        }
     },
 
     async confirmDecision(decision) {
@@ -443,7 +485,11 @@ const App = {
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         this.ws = new WebSocket(`${proto}//${location.host}/ws/${projectId}`);
         this.ws.onopen = () => this._updateApiStatus(true);
-        this.ws.onmessage = (e) => this._handleWSMessage(JSON.parse(e.data));
+        this.ws.onmessage = (event) => {
+            if (this.currentProjectId === projectId && this.ws === event.target) {
+                this._handleWSMessage(JSON.parse(event.data));
+            }
+        };
         this.ws.onclose = () => this._updateApiStatus(false);
         this.ws.onerror = () => this._updateApiStatus(false);
     },
@@ -452,7 +498,7 @@ const App = {
         const { type, phase, progress, message, chapter, scores, token, data: msgData } = msg;
         const pb = document.getElementById('progress-fill');
         const pl = document.getElementById('phase-label');
-        const pm = { platform_scan:'Platform Rankings', topic_selection:'Topic Research', mini_arc_outline:'Opening Arc Outline', bible_construction:'Building the World', character_creation:'Creating Characters', master_outline:'Generating Outline', chapter_planning:'Planning Chapters', chapter_writing:'Writing', quality_review:'Reviewing', polish_revision:'Polishing', memory_update:'Updating Memory' };
+        const pm = { platform_scan:'Research Snapshots', topic_selection:'Topic Research', mini_arc_outline:'Opening Arc Outline', bible_construction:'Building the World', character_creation:'Creating Characters', master_outline:'Generating Outline', chapter_planning:'Planning Chapters', chapter_writing:'Writing', quality_review:'Reviewing', polish_revision:'Polishing', memory_update:'Updating Memory' };
         const tm = { platform_scan:'topics', topic_selection:'topics', mini_arc_outline:'topics', bible_construction:'bible', character_creation:'characters', master_outline:'outline', chapter_planning:'chapters', chapter_writing:'chapters' };
         // Pipeline badge mapping
         const phaseToStep = { platform_scan:'scan', topic_selection:'topic', mini_arc_outline:'arc', bible_construction:'bible', character_creation:'chars', master_outline:'outline' };
@@ -478,14 +524,7 @@ const App = {
                     this._updatePipelineBadge(step, 'done');
                     if (msgData) this._renderPhaseResult(step, msgData);
                     // Show confirm UI per step
-                    if (step === 'scan') {
-                        // Auto-confirm scan → proceed to topic selection
-                        this._updatePipelineBadge('topic', 'active');
-                        API.confirmPhase(this.currentProjectId, null).catch(() => {});
-                        // Clear scan status text
-                        const statusEl = document.getElementById('scan-status');
-                        if (statusEl) statusEl.innerHTML = '';
-                    } else if (step === 'topic') {
+                    if (step === 'topic') {
                         document.getElementById('topic-confirm-area').style.display = 'flex';
                     } else if (step === 'arc') {
                         document.getElementById('arc-confirm-area').style.display = 'flex';
@@ -517,7 +556,14 @@ const App = {
                 if (this.currentProjectId) this._loadTabContent('chapters');
                 this._refreshProjects();
                 break;
-            case 'error': alert(`Workflow error: ${data.error}`); break;
+            case 'error':
+                if (phase === 'platform_scan' || this._pipelineState.scan === 'running') {
+                    document.getElementById('scan-status').textContent = message || 'Research failed. Retry the import.';
+                    document.getElementById('scan-input-area').style.display = 'block';
+                } else {
+                    alert(message || 'Workflow failed.');
+                }
+                break;
         }
     },
 
@@ -536,74 +582,45 @@ const App = {
 
     _renderScanResult(data) {
         const el = document.getElementById('scan-result-area');
-        if (!el) return;
-        let totalEntries = 0, html = '';
-        const genreCount = {};
-        const allEntries = [];
-
-        const collectEntries = (platformData, platformName) => {
-            if (!platformData?.entries) return;
-            (platformData.entries || []).forEach(e => {
-                if (e.genre) {
-                    const g = e.genre.replace(/[\/／].*/, '').trim();
-                    genreCount[g] = (genreCount[g] || 0) + 1;
-                }
-                totalEntries++;
-                allEntries.push({...e, _platform: platformName});
-            });
-        };
-        collectEntries(data.feilu, 'Feilu');
-        collectEntries(data.fanqie, 'Fanqie');
-
-        // Dashboard tiles
-        html += '<div class="dash-grid">';
-        html += `<div class="dash-tile accent"><div class="dash-num">${totalEntries}</div><div class="dash-label">Books Scanned</div></div>`;
-        const platforms = [data.feilu, data.fanqie].filter(Boolean);
-        html += `<div class="dash-tile success"><div class="dash-num">${platforms.length}</div><div class="dash-label">Platforms Scanned</div></div>`;
-        html += `<div class="dash-tile warning"><div class="dash-num">${Object.keys(genreCount).length}</div><div class="dash-label">Genres Identified</div></div>`;
-        html += '</div>';
-
-        // Bar chart of top genres
-        const sortedGenres = Object.entries(genreCount).sort((a,b) => b[1]-a[1]).slice(0, 8);
-        if (sortedGenres.length) {
-            const maxCount = sortedGenres[0][1];
-            html += '<p style="font-weight:600;font-size:0.82rem;margin-bottom:6px">📊 Trending Genres</p>';
-            html += '<div class="bar-chart">';
-            sortedGenres.forEach(([g, c], i) => {
-                const pct = Math.round((c/maxCount)*100);
-                const colors = ['','warm','cool','green'];
-                html += `<div class="bar-row"><span class="bar-label">${Components._esc(g)}</span><div class="bar-track"><div class="bar-fill ${colors[i%4]||''}" style="width: ${pct}%"></div></div><span class="bar-val">${c}</span></div>`;
-            });
-            html += '</div>';
-        }
-
-        // Book list by platform
-        platforms.forEach(p => {
-            const isFeilu = ['Feilu', '\u98de\u5362'].includes(p.platform) || data.feilu === p;
-            const entries = p.entries || [];
-            html += `<div class="scan-mini-card" style="margin-bottom:10px"><h4>${isFeilu?'🔍 Feilu':'🍅 Fanqie'} · ${Components._esc(p.list_name||'Rankings')} · ${Components._esc(p.date||'')}</h4>`;
-            if (p.scan_failed) {
-                html += `<p style="color:var(--error)">${Components._esc(p.summary||'Ranking scan failed')}</p>`;
-            } else {
-                html += `<p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:8px">${Components._esc((p.summary||'').substring(0,120))}</p>`;
-                if (entries.length) {
-                    html += '<div class="scan-book-list">';
-                    entries.forEach((e, i) => {
-                        const title = e.title || '';
-                        html += `<div class="scan-book-row"><span class="scan-book-rank">#${i+1}</span><span class="scan-book-title">${Components._esc(title)}</span>${e.genre?`<span class="tag-chip gray">${Components._esc(e.genre)}</span>`:''}</div>`;
-                    });
-                    html += '</div>';
+        const coverage = data.coverage || {};
+        const snapshots = data.snapshots || [];
+        const names = { wattpad: 'Wattpad', royal_road: 'Royal Road' };
+        const esc = Components._esc;
+        const cards = Object.entries(names).map(([platform, name]) => {
+            const lists = snapshots.filter(snapshot => snapshot.platform === platform);
+            const genres = new Map();
+            for (const list of lists) {
+                for (const story of list.observations) {
+                    for (const tag of story.tags) {
+                        const label = tag.trim().toLowerCase();
+                        if (!genres.has(label)) genres.set(label, {tag, refs: new Set()});
+                        genres.get(label).refs.add(story.story_ref);
+                    }
                 }
             }
-            html += '</div>';
-        });
-
-        el.innerHTML = html; el.style.display = 'block';
+            const tags = Array.from(genres.values()).sort((a, b) => b.refs.size - a.refs.size)
+                .slice(0, 8).map(({tag, refs}) => `${esc(tag)} (${refs.size})`).join(', ');
+            const listCards = lists.map(list => `
+                <h5><a href="${esc(list.source_url)}" target="_blank" rel="noopener noreferrer">${esc(list.list_name)}</a>
+                    · ${esc(list.captured_on)} · ${list.observations.length} observations</h5>
+                ${list.filters ? `<p>${esc(list.filters)}</p>` : ''}
+                <ul>${list.observations.map(story => `<li>
+                    ${story.rank ? `#${story.rank} · ` : ''}
+                    <a href="${esc(story.story_url)}" target="_blank" rel="noopener noreferrer">${esc(story.title)}</a>
+                    <small>${esc(story.story_ref)}${story.language === 'unknown' ? ' · language unknown' : ''}</small>
+                </li>`).join('')}</ul>
+            `).join('');
+            return `<section class="scan-mini-card"><h4>${name}</h4>
+                <p>${coverage[platform] ? `${coverage[platform]} unique sampled stories` : 'No imported observations'}</p>
+                ${tags ? `<p>Sampled genres and tags · ${tags}</p>` : ''}${listCards}</section>`;
+        }).join('');
+        const label = coverage.wattpad && coverage.royal_road ? 'Both sources sampled'
+            : snapshots.length ? 'Partial coverage · one source sampled' : 'No current research snapshot';
+        el.innerHTML = `<p><strong>${label}</strong></p>${data.historical ? '<p>This project has historical research from earlier sources.</p>' : ''}${cards}`;
+        el.style.display = 'block';
+        document.getElementById('scan-status').textContent = '';
         document.getElementById('scan-input-area').style.display = 'none';
-        document.getElementById('btn-start-scan').style.display = 'none';
-        // Clear status
-        const statusEl = document.getElementById('scan-status');
-        if (statusEl) statusEl.innerHTML = '';
+        document.getElementById('btn-start-scan').style.display = snapshots.length ? 'none' : '';
     },
 
     _renderTopicResult(data) {
@@ -611,9 +628,27 @@ const App = {
         this._topicTitleData = data.title_synopsis || [];
         this._topicCandidates = data.candidates?.topics || [];
         this._topicCrossPlatform = data.cross_platform;
-        this._checkedCandidates = {};
+        this._checkedCandidates = Object.create(null);
         this._synopsisCards = [];
         this._selectedSynopsisIdx = -1;
+
+        const coverage = data.coverage || {};
+        const evidenceArea = document.getElementById('topic-evidence-area');
+        const overlap = Object.keys(data.shared_tags || {}).slice(0, 8).map(Components._esc).join(', ');
+        const names = { wattpad: 'Wattpad', royal_road: 'Royal Road' };
+        const findings = (data.cross_platform?.entries || []).flatMap(entry =>
+            Object.entries(entry.findings || {}).map(([source, finding]) => {
+                const refs = entry.evidence?.[source] || [];
+                return `<li><strong>${Components._esc(entry.genre)} · ${names[source]}</strong>
+                    ${Components._esc(finding)} <small>[${Components._esc(refs.join(', '))}]</small></li>`;
+            })
+        );
+        evidenceArea.innerHTML = `
+            <p>Sample coverage · Wattpad: ${coverage.wattpad || 0} · Royal Road: ${coverage.royal_road || 0}</p>
+            ${overlap ? `<p>Tags observed in English-language samples on both platforms · ${overlap}</p>` : ''}
+            ${findings.length ? `<ul>${findings.join('')}</ul>` : '<p>No validated findings from the current sources. Use these concepts for brainstorming.</p>'}
+            ${data.historical ? '<p>This project has historical research from earlier sources.</p>' : ''}
+        `;
 
         const allTopics = [];
         const seen = new Set();
@@ -638,10 +673,10 @@ const App = {
             if (candidatesArea) candidatesArea.style.display = 'none';
             if (aiArea) {
                 aiArea.style.display = 'block';
-                const scanOk = (data.feilu?.entries?.length || 0) + (data.fanqie?.entries?.length || 0) > 0;
+                const scanOk = Object.values(coverage).some(count => count > 0);
                 const msg = scanOk
                     ? '⚠️ The scan completed, but no concepts were generated. Retry or enter your own idea below.'
-                    : '⚠️ No concepts were generated. Try again with more ranking data or enter your own idea below.';
+                    : '⚠️ No concepts were generated. Try importing more observations or enter your own idea below.';
                 aiArea.querySelector('p').innerHTML = msg +
                     '&nbsp;<button class="btn btn-warning btn-sm" onclick="App.retryPhase(\'topic_selection\')" style="margin-left:8px">🔄 Regenerate Concepts</button>';
                 aiArea.querySelector('p').style.color = 'var(--warning)';
@@ -656,13 +691,21 @@ const App = {
             allTopics.slice(0, 12).forEach((t, i) => {
                 const name = Components._esc(t.name);
                 const score = t.score ? (t.score).toFixed(1) : '—';
-                listHtml += `<div class="topic-candidate-row" data-genre="${name}" onclick="App.toggleCandidate('${name}')">
-                    <div class="topic-candidate-check">✓</div>
-                    <span class="topic-candidate-name">${name}</span>
-                    <span class="topic-candidate-score">${score}${t.score?' pts':''}</span>
-                </div>`;
+                const fits = Object.entries(names).map(([source, label]) => {
+                    const fit = t.data.platform_fit?.[source];
+                    return fit ? `${label} ${fit.score}/10 (${Components._esc(fit.evidence.join(', '))})`
+                        : `${label} unknown`;
+                }).join(' · ');
+                listHtml += `<button type="button" class="topic-candidate-row" data-index="${i}">
+                    <span class="topic-candidate-check">✓</span>
+                    <span class="topic-candidate-name">${name}<small style="display:block">${fits}</small></span>
+                    <span class="topic-candidate-score">${score}${t.score ? ' pts' : ''}</span>
+                </button>`;
             });
             candidatesList.innerHTML = listHtml;
+            candidatesList.querySelectorAll('[data-index]').forEach((row) => {
+                row.addEventListener('click', () => this.toggleCandidate(allTopics[Number(row.dataset.index)].name, row));
+            });
             this._allTopics = allTopics.slice(0, 12);
         }
 
@@ -670,9 +713,8 @@ const App = {
     },
 
     /** Toggle candidate checkbox */
-    toggleCandidate(genreName) {
+    toggleCandidate(genreName, row) {
         this._checkedCandidates[genreName] = !this._checkedCandidates[genreName];
-        const row = document.querySelector(`.topic-candidate-row[data-genre="${genreName}"]`);
         if (row) row.classList.toggle('checked', this._checkedCandidates[genreName]);
         const count = Object.values(this._checkedCandidates).filter(Boolean).length;
         const hint = document.getElementById('candidate-hint');
@@ -787,17 +829,19 @@ const App = {
                         const name = t;
                         if (!this._checkedCandidates[name]) {
                             this._checkedCandidates[name] = true;
-                            const row = document.querySelector(`.topic-candidate-row[data-genre="${Components._esc(name)}"]`);
+                            const index = this._allTopics.findIndex(item => item.name === name);
+                            const row = index >= 0 ? document.querySelector(`.topic-candidate-row[data-index="${index}"]`) : null;
                             if (row) row.classList.add('checked');
                             else {
                                 // Add a new row
                                 this._allTopics.push({name, score: 0, data: {}});
                                 const list = document.getElementById('topic-candidates-list');
-                                const newRow = document.createElement('div');
+                                const newRow = document.createElement('button');
+                                newRow.type = 'button';
                                 newRow.className = 'topic-candidate-row checked';
-                                newRow.dataset.genre = name;
+                                newRow.dataset.index = this._allTopics.length - 1;
                                 newRow.innerHTML = `<div class="topic-candidate-check">✓</div><span class="topic-candidate-name">${Components._esc(name)}</span><span class="topic-candidate-score">AI</span>`;
-                                newRow.onclick = () => App.toggleCandidate(name);
+                                newRow.onclick = () => App.toggleCandidate(name, newRow);
                                 list.appendChild(newRow);
                             }
                             const count = Object.values(this._checkedCandidates).filter(Boolean).length;
@@ -1030,6 +1074,10 @@ const App = {
     },
 
     _showPhaseConfirmation(phase) {
+        if (phase === 'platform_scan') {
+            this._scanAwaitingConfirmation = true;
+            document.getElementById('scan-confirm-area').style.display = 'block';
+        }
         document.querySelector('.phase-confirm')?.remove();
         const ac = document.querySelector('#view-project .tab-content.active');
         if (!ac) return;
@@ -1083,10 +1131,10 @@ const App = {
     // ================================================================
     // New Project Form
     // ================================================================
-    // Form handlers removed — project creation is now automatic on "Scan Rankings"
+    // Project creation is handled when the research form is opened.
     _setupFormHandlers() {
         // No setup needed — the old modal form has been removed.
-        // Projects are auto-created when clicking "Scan Rankings" and finalized on topic confirmation.
+        // Projects are created when the research form is opened.
     },
 
     _updateApiStatus(c) {
@@ -1097,7 +1145,7 @@ const App = {
     _esc(s) { return Components._esc(s); },
 
     // ================================================================
-    // Scan Step — auto-creates draft project, auto-scrapes platforms
+    // Research import — creates a draft project if needed
     // ================================================================
     async startScan() {
         // 1. Auto-create draft project if needed
@@ -1125,40 +1173,10 @@ const App = {
             } catch (err) { alert(`Could not create project: ${err.message}`); return; }
         }
 
-        // 2. Hide start button, show scanning status
+        this._navigate('workspace');
         document.getElementById('btn-start-scan').style.display = 'none';
-        const scanBody = document.getElementById('body-scan');
-        let statusEl = document.getElementById('scan-status');
-        if (!statusEl) {
-            statusEl = document.createElement('div');
-            statusEl.id = 'scan-status';
-            statusEl.style.cssText = 'padding:12px 0;font-size:0.9rem;color:var(--text-secondary);';
-            scanBody.appendChild(statusEl);
-        }
-        statusEl.innerHTML = '🔍 Fetching Feilu and Fanqie rankings... <span style="color:var(--accent)">Please wait</span>';
-
-        // 3. Try auto-scan
-        try {
-            const result = await API.autoScan(this.currentProjectId);
-
-            if (result.status === 'ok' || result.status === 'partial') {
-                // Scan succeeded (at least partially) — start workflow
-                statusEl.innerHTML = `📊 ${result.message} (Feilu: ${result.feilu.chars} characters, Fanqie: ${result.fanqie.chars} characters)`;
-                await API.startWorkflow(this.currentProjectId);
-                this._updatePipelineBadge('scan', 'running');
-                statusEl.innerHTML += '<br><span style="color:var(--success)">✅ Scan submitted. Analyzing rankings...</span>';
-                return;
-            } else {
-                // Both platforms failed
-                statusEl.innerHTML = `⚠️ ${result.message}<br><small style="color:var(--text-secondary)">Could not fetch rankings from either platform. Paste the rankings manually.</small>`;
-            }
-        } catch (err) {
-            console.error('Auto-scan failed:', err);
-            statusEl.innerHTML = '⚠️ Automatic scan failed. Paste the rankings manually.';
-        }
-
-        // 4. Fallback: show manual paste area
         document.getElementById('scan-input-area').style.display = 'block';
+        document.getElementById('scan-csv').focus();
     },
 
     /** Show project header in workspace */
@@ -1176,7 +1194,6 @@ const App = {
     // ================================================================
     // Topic Selection
     // ================================================================
-    _scanProjectId: null,  // Original project that holds scan data
     _selectedTopic: null,
 
     selectTopic(genreName) {
@@ -1194,12 +1211,13 @@ const App = {
 
     async confirmTopic() {
         // Get selected synopsis card or fall back to checked topic
-        let newTitle, genreName;
+        let newTitle, genreName, synopsis;
         const insp = document.getElementById('topic-inspiration')?.value || '';
 
         if (this._selectedSynopsisIdx >= 0 && this._synopsisCards[this._selectedSynopsisIdx]) {
             const card = this._synopsisCards[this._selectedSynopsisIdx];
             newTitle = card.editedTitle || card.title;
+            synopsis = card.editedSynopsis || card.synopsis;
             genreName = card.genreName;
         } else {
             // No synopsis card selected — use first checked candidate
@@ -1218,8 +1236,9 @@ const App = {
             this._updatePipelineBadge('topic', 'done');
             this._updatePipelineBadge('arc', 'active');
 
-            const confirmMsg = `Selected genre: ${genreName}. Title: ${newTitle}. ${insp}`;
-            await API.confirmPhase(this.currentProjectId, confirmMsg);
+            await API.confirmPhase(this.currentProjectId, insp || null, {
+                genre_name: genreName, selected_title: synopsis ? newTitle : null, selected_synopsis: synopsis
+            });
         } catch (err) { alert(`Confirmation failed: ${err.message}`); }
     },
 

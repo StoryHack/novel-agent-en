@@ -4,17 +4,15 @@ import logging
 
 from ..agents.orchestrator import OrchestratorAgent
 from ..models.state import MainState
+from ..models.topic import TopicResearchState
 from ..storage.file_manager import ProjectFileManager
 
 logger = logging.getLogger(__name__)
 
-# Module-level storage for scan data (set by routes before phase execution)
-_pending_scan_data: dict[str, str | None] = {}
-
 # Display labels for each phase
 PHASE_LABELS = {
     "project_init": "Project Initialization",
-    "platform_scan": "Platform Rankings",
+    "platform_scan": "Research Snapshots",
     "topic_selection": "Topic Research",
     "mini_arc_outline": "Opening Arc Outline",
     "bible_construction": "Worldbuilding",
@@ -150,28 +148,12 @@ async def execute_phase_platform_scan(
     orchestrator: OrchestratorAgent,
     fm: ProjectFileManager,
 ) -> MainState:
-    """Execute platform scanning phase (Phase 0a).
-
-    Reads scan HTML content from the module-level _pending_scan_data dict,
-    which is populated by the API endpoint before this phase runs.
-    """
-    feilu_content = _pending_scan_data.pop("feilu", None)
-    fanqie_content = _pending_scan_data.pop("fanqie", None)
-
-    if not feilu_content and not fanqie_content:
-        logger.warning("No scan data provided — skipping platform scan")
-        # Still initialize topic research state so downstream phases don't crash
-        from ..models.topic import TopicResearchState
-
-        state.topic_research = TopicResearchState()
+    """Build the scan from the snapshot pinned at workflow start."""
+    if state.research_input is None:
+        if state.topic_research is None:
+            state.topic_research = TopicResearchState()
         return state
-
-    state = await orchestrator.scan_platforms(
-        state,
-        feilu_content=feilu_content,
-        fanqie_content=fanqie_content,
-    )
-    return state
+    return await orchestrator.scan_platforms(state)
 
 
 async def execute_phase_topic_selection(
@@ -222,40 +204,44 @@ PHASE_EXECUTORS = {
 
 def get_phase_data(state: MainState, phase: str) -> dict:
     """Extract phase output data for frontend display."""
-    if phase == "platform_scan" and state.topic_research:
-        research = state.topic_research
-        data = {}
-        if research.feilu_scan:
-            data["feilu"] = research.feilu_scan.model_dump()
-        if research.fanqie_scan:
-            data["fanqie"] = research.fanqie_scan.model_dump()
-        return data
+    source = state.research_input
+    if phase == "platform_scan":
+        snapshots = []
+        for snapshot in source.snapshots if source else ():
+            snapshot_data = snapshot.model_dump(mode="json", exclude={"observations"})
+            snapshot_data["observations"] = [
+                {**story.model_dump(), "story_ref": snapshot.story_ref(story)} for story in snapshot.observations
+            ]
+            snapshots.append(snapshot_data)
+        return {
+            "coverage": source.coverage() if source else {},
+            "snapshots": snapshots,
+            "historical": bool(
+                state.topic_research and (state.topic_research.feilu_scan or state.topic_research.fanqie_scan)
+            ),
+        }
     elif phase == "topic_selection" and state.topic_research:
         research = state.topic_research
-        data = {}
-        if research.cross_platform:
+        tags = source.english_tags() if source else {}
+        historical = not source and bool(research.feilu_scan or research.fanqie_scan)
+        data = {
+            "coverage": source.coverage() if source else {},
+            "shared_tags": {tag: refs for tag, refs in tags.items() if len(refs) == 2},
+            "historical": historical,
+        }
+        if research.cross_platform and source:
             data["cross_platform"] = research.cross_platform.model_dump()
-        if research.benchmarks:
+        if research.benchmarks and source:
             data["benchmarks"] = research.benchmarks.model_dump()
         if research.candidates:
             data["candidates"] = research.candidates.model_dump()
-        if research.scores:
+        if research.scores and not historical:
             data["scores"] = research.scores.model_dump()
         if research.title_synopsis:
             data["title_synopsis"] = [ts.model_dump() for ts in research.title_synopsis]
         return data
     elif phase == "mini_arc_outline" and state.mini_arc_outline:
-        # Convert Pydantic models to dicts for JSON serialization
-        # (websocket uses json.dumps with default=str, which would stringify models)
-        serialized = {}
-        for genre, outline in state.mini_arc_outline.items():
-            if hasattr(outline, "model_dump"):
-                serialized[genre] = outline.model_dump()
-            elif isinstance(outline, dict):
-                serialized[genre] = outline
-            else:
-                serialized[genre] = str(outline)
-        return {"mini_arc_outline": serialized}
+        return {"mini_arc_outline": {genre: outline.model_dump() for genre, outline in state.mini_arc_outline.items()}}
     elif phase == "bible_construction" and state.bible:
         return {
             "world": state.bible.world.model_dump(),

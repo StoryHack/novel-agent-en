@@ -219,8 +219,8 @@ const Components = {
     },
 
     phaseConfirmPanel(phase) {
-        const labels = { platform_scan:'Platform Rankings', topic_selection:'Topic Research', mini_arc_outline:'Opening Arc Outline', bible_construction:'Worldbuilding', character_creation:'Character Creation', master_outline:'Outline Generation', chapter_planning:'Chapter Planning', chapter_writing:'Chapter Writing' };
-        const hints = { platform_scan:'Review the rankings before moving on to topic research.', topic_selection:'Confirm the concept to generate the opening arc outline.', mini_arc_outline:'Confirm the outline to start worldbuilding.', bible_construction:'Review the worldbuilding before creating characters.', character_creation:'Review the characters before generating the outline.', master_outline:'Confirm the outline to start writing chapters.' };
+        const labels = { platform_scan:'Research Snapshots', topic_selection:'Topic Research', mini_arc_outline:'Opening Arc Outline', bible_construction:'Worldbuilding', character_creation:'Character Creation', master_outline:'Outline Generation', chapter_planning:'Chapter Planning', chapter_writing:'Chapter Writing' };
+        const hints = { platform_scan:'Review the snapshot coverage before moving on to topic research.', topic_selection:'Confirm the concept to generate the opening arc outline.', mini_arc_outline:'Confirm the outline to start worldbuilding.', bible_construction:'Review the worldbuilding before creating characters.', character_creation:'Review the characters before generating the outline.', master_outline:'Confirm the outline to start writing chapters.' };
         const label = labels[phase]||phase;
         return `<div class="confirm-panel phase-confirm" data-phase="${phase}"><h3>${label} complete</h3><p>${hints[phase]||'Confirm to continue.'}</p>
             <div class="form-group"><label>Additional Ideas (Optional)</label><textarea id="inspiration-input" placeholder="Add your ideas..." style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);min-height:60px;font-family:inherit;font-size:0.9rem;"></textarea></div>
@@ -236,28 +236,8 @@ const Components = {
 
     topicResearchView() {
         return `<div class="section">
-            <h4>Market Research · Platform Rankings</h4>
-            <p style="color:var(--text-secondary);margin-bottom:16px">
-                Paste HTML or plain text from Feilu or Fanqie rankings (up to 15,000 characters).
-                The assistant identifies popular genres, analyzes trends, and suggests story concepts.
-            </p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-                <div class="form-group">
-                    <label for="scan-feilu"><strong>Feilu Rankings</strong></label>
-                    <textarea id="scan-feilu" placeholder="Paste the Feilu rankings page..." style="width:100%;min-height:200px;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:monospace;font-size:0.85rem;resize:vertical"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="scan-fanqie"><strong>Fanqie Rankings</strong></label>
-                    <textarea id="scan-fanqie" placeholder="Paste the Fanqie rankings page..." style="width:100%;min-height:200px;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:monospace;font-size:0.85rem;resize:vertical"></textarea>
-                </div>
-            </div>
-            <div class="confirm-actions" style="margin-top:16px">
-                <button class="btn btn-primary" onclick="App.submitScan()">Analyze Rankings</button>
-            </div>
-            <p class="hint" style="margin-top:8px;color:var(--text-secondary);font-size:0.8rem">
-                Use browser developer tools (F12) or Playwright to copy the rankings page HTML.
-                After the scan, the pipeline continues with topic research, an opening arc outline, and worldbuilding.
-            </p>
+            <p>Record dated list observations from Wattpad or Royal Road.</p>
+            <button class="btn btn-primary" onclick="App.startScan()">Import Research</button>
         </div>`;
     },
 

@@ -39,23 +39,27 @@
                         </div>
                         <div class="pipeline-card">
                             <div class="pipeline-card-header">
-                                <h3>Platform Rankings</h3>
+                                <h3>Research Snapshots</h3>
                                 <span class="pipeline-badge" id="badge-scan">Pending</span>
                             </div>
                             <div class="pipeline-card-body" id="body-scan">
-                                <p class="pipeline-desc">Scan Feilu and Fanqie rankings to identify genre trends and reader preferences.</p>
+                                <p class="pipeline-desc">Import dated observations from Wattpad and Royal Road to guide topic research.</p>
                                 <div class="step-action-bar" id="action-scan">
-                                    <button class="btn btn-primary" id="btn-start-scan" onclick="App.startScan()">Scan Rankings</button>
+                                    <button class="btn btn-primary" id="btn-start-scan" onclick="App.startScan()">Import Research</button>
                                 </div>
                                 <div id="scan-input-area" style="display:none">
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-                                        <div><label style="font-size:0.8rem;color:var(--text-secondary)">Feilu rankings HTML</label><textarea id="scan-feilu" placeholder="Paste the Feilu rankings page..." style="width:100%;min-height:80px;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;font-size:0.78rem;font-family:monospace;resize:vertical"></textarea></div>
-                                        <div><label style="font-size:0.8rem;color:var(--text-secondary)">Fanqie rankings HTML</label><textarea id="scan-fanqie" placeholder="Paste the Fanqie rankings page..." style="width:100%;min-height:80px;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;font-size:0.78rem;font-family:monospace;resize:vertical"></textarea></div>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm" onclick="App.submitScan()">Submit Rankings</button>
+                                    <label for="scan-csv">Wattpad and Royal Road observations (CSV)</label>
+                                    <textarea id="scan-csv" rows="6" maxlength="100000" style="display:block;width:100%;margin:8px 0" spellcheck="false"></textarea>
+                                    <button class="btn btn-secondary btn-sm" onclick="App.fillResearchExample()">Load Sample CSV</button>
+                                    <button class="btn btn-primary btn-sm" id="btn-submit-scan" onclick="App.submitScan()">Analyze Snapshots</button>
                                     <button class="btn btn-secondary btn-sm" onclick="App.skipScan()">Skip to Writing</button>
                                 </div>
+                                <p id="scan-status" role="status"></p>
                                 <div id="scan-result-area" style="display:none"></div>
+                                <div id="scan-confirm-area" style="display:none">
+                                    <button class="btn btn-primary btn-sm" onclick="App.confirmResearch()">Continue to Topic Research</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="App.startScan()">Replace Snapshot</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -74,6 +78,7 @@
                             <div class="pipeline-card-body" id="body-topic">
                                 <p class="pipeline-desc">Compare both platforms, analyze benchmark books, score 12 concepts on 8 criteria, and generate titles and synopses.</p>
                                 <!-- Candidate topic checkboxes -->
+                                <div id="topic-evidence-area"></div>
                                 <div id="topic-candidates-area" style="display:none">
                                     <p style="font-weight:600;font-size:0.82rem;margin-bottom:6px">Select concepts to generate synopses</p>
                                     <div id="topic-candidates-list" class="topic-candidates-list"></div>

@@ -79,16 +79,9 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 
-def _has_scan_data(state: MainState) -> bool:
-    """Whether scan data is pending (set by the /submit-scan endpoint)."""
-    from ..api.phase_executor import _pending_scan_data
-
-    return bool(_pending_scan_data.get("feilu") or _pending_scan_data.get("fanqie"))
-
-
 def phase0_route(state: MainState) -> str:
     """Route into Phase 0 (commercial research) when scan data exists."""
-    return "scan" if _has_scan_data(state) else "skip"
+    return "scan" if state.research_input else "skip"
 
 
 def bible_route(state: MainState) -> str:

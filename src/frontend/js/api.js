@@ -13,7 +13,8 @@ const API = {
         const resp = await fetch(`${this.BASE}${path}`, opts);
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: resp.statusText }));
-            throw new Error(err.detail || `HTTP ${resp.status}`);
+            const detail = Array.isArray(err.detail) ? err.detail.map(item => item.msg).join('; ') : err.detail;
+            throw new Error(detail || `HTTP ${resp.status}`);
         }
         // Handle non-JSON responses (file downloads)
         const ct = resp.headers.get('content-type') || '';
@@ -28,12 +29,15 @@ const API = {
     getProject(id)              { return this.request('GET', `/projects/${id}`); },
     deleteProject(id)           { return this.request('DELETE', `/projects/${id}`); },
     updateTitle(id, title)      { return this.request('PUT', `/projects/${id}/title`, { title }); },
-    startWorkflow(id)           { return this.request('POST', `/projects/${id}/start`); },
-    confirmPhase(id, inspiration) { return this.request('POST', `/projects/${id}/confirm-phase`, { inspiration }); },
+    startWorkflow(id, skipResearch = false) { return this.request('POST', `/projects/${id}/start`, { skip_research: skipResearch }); },
+    confirmPhase(id, inspiration, selection = {}) { return this.request('POST', `/projects/${id}/confirm-phase`, { inspiration, ...selection }); },
     suggestTitles(inspiration, genre) { return this.request('POST', '/projects/suggest-titles', { inspiration, genre }); },
-    submitScan(id, feiluHtml, fanqieHtml) { return this.request('POST', `/projects/${id}/submit-scan`, { feilu_html: feiluHtml||null, fanqie_html: fanqieHtml||null }); },
-    autoScan(id)                { return this.request('POST', `/projects/${id}/auto-scan`); },
-    retryPhase(id, phase, inspiration) { return this.request('POST', `/projects/${id}/retry-phase/${phase}`, { inspiration: inspiration || null }); },
+    submitScan(id, csv)         { return this.request('POST', `/projects/${id}/submit-scan`, { csv }); },
+    retryPhase(id, phase, inspiration, useStagedResearch = false) {
+        return this.request('POST', `/projects/${id}/retry-phase/${phase}`, {
+            inspiration: inspiration || null, use_staged_research: useStagedResearch
+        });
+    },
     generateSynopsis(id, genreName, inspiration) { return this.request('POST', `/projects/${id}/generate-synopsis`, { genre_name: genreName, inspiration: inspiration || '' }); },
 
     // ---- Artifacts ----

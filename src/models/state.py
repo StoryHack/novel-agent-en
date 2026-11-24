@@ -12,8 +12,9 @@ from .feedback import FeedbackEntry
 from .memory import MemoryState
 from .outline import ChapterPlan, MasterOutline
 from .project import ProjectConfig, ProjectMeta
+from .research import ResearchImport
 from .review import ReviewReport
-from .topic import TopicResearchState
+from .topic import MiniArcOutline, TopicResearchState
 
 
 class MainState(BaseModel):
@@ -73,11 +74,12 @@ class MainState(BaseModel):
     )
 
     # ===== Upstream: Commercial Research Pipeline =====
+    research_input: ResearchImport | None = None
     topic_research: TopicResearchState | None = Field(
         default=None,
         description="Topic research pipeline state (Steps 1-4: scan→benchmark→select→title)",
     )
-    mini_arc_outline: dict | None = Field(
+    mini_arc_outline: dict[str, MiniArcOutline] | None = Field(
         default=None,
         description="10-chapter mini-arc outlines keyed by genre name",
     )

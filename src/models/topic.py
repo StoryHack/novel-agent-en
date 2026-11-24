@@ -8,6 +8,8 @@ from typing import Any
 
 from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 
+from .research import Platform
+
 # ============================================================
 # Step 1A/1B: Platform Scanning
 # ============================================================
@@ -41,7 +43,7 @@ class ScanEntry(BaseModel):
 class ScanReport(BaseModel):
     """Complete platform scan report (Step 1A or 1B)."""
 
-    platform: str = Field(default="", description="Platform name: Feilu or Fanqie")
+    platform: str = Field(default="", description="Historical source platform")
     list_name: str = Field(default="", description="Name of the ranking list consulted")
     date: str = Field(default="", description="Date of scan (YYYY-MM-DD)")
     entries: list[ScanEntry] = Field(default_factory=list, description="Top 10-20 entries")
@@ -67,6 +69,8 @@ class CrossPlatformEntry(BaseModel):
     """A single genre/direction in the cross-platform comparison table."""
 
     genre: str = Field(default="", description="Genre / topic direction name")
+    findings: dict[Platform, str] = Field(default_factory=dict)
+    evidence: dict[Platform, list[str]] = Field(default_factory=dict)
     feilu_heat: bool = Field(
         default=False,
         description="Whether the genre is popular on Feilu",
@@ -122,6 +126,8 @@ class CrossPlatformReport(BaseModel):
 class BenchmarkSkeleton(BaseModel):
     """Structural skeleton of a single benchmark book (Step 2)."""
 
+    story_ref: str = ""
+    positioning: str = ""
     title: str = Field(default="", description="Title", validation_alias=AliasChoices("title", "书名"))
     genre: str = Field(default="", description="Genre", validation_alias=AliasChoices("genre", "题材"))
     title_appeal: str = Field(
@@ -187,7 +193,13 @@ class BenchmarkReport(BaseModel):
 # ============================================================
 
 
-class CandidateTopic(BaseModel):
+class PlatformFit(BaseModel):
+    score: float = Field(ge=1, le=10)
+    evidence: list[str] = Field(min_length=1, max_length=8)
+    rationale: str = Field(min_length=1, max_length=400)
+
+
+class ConceptDraft(BaseModel):
     """A single candidate topic generated from research (Step 3A)."""
 
     genre_name: str = Field(default="", description="Genre name", validation_alias=AliasChoices("genre_name", "题材名称"))
@@ -216,17 +228,20 @@ class CandidateTopic(BaseModel):
         description="First Wave Payoff",
         validation_alias=AliasChoices("first_pleasure_wave", "第一波爽点"),
     )
-    tomato_fit: str = Field(
-        default="medium",
+    risk: str = Field(default="", description="Potential risks", validation_alias=AliasChoices("risk", "风险点"))
+
+
+class CandidateTopic(ConceptDraft):
+    tomato_fit: str | None = Field(
+        default=None,
         description="Fit for Fanqie readers: high / medium / low",
         validation_alias=AliasChoices("tomato_fit", "番茄适配度: high / medium / low"),
     )
-    video_potential: str = Field(
-        default="medium",
+    video_potential: str | None = Field(
+        default=None,
         description="Short-form video potential: high / medium / low",
         validation_alias=AliasChoices("video_potential", "视频表现力: high / medium / low"),
     )
-    risk: str = Field(default="", description="Potential risks", validation_alias=AliasChoices("risk", "风险点"))
 
 
 class CandidateTopicsOutput(BaseModel):
@@ -240,7 +255,7 @@ class CandidateTopicsOutput(BaseModel):
 # ============================================================
 
 
-class TopicScoreCard(BaseModel):
+class ConceptEvaluation(BaseModel):
     """Score card for a single topic (Step 3B)."""
 
     genre_name: str = Field(default="", description="Genre name", validation_alias=AliasChoices("genre_name", "题材名称"))
@@ -272,37 +287,41 @@ class TopicScoreCard(BaseModel):
         description="Ability of the premise to sustain payoffs",
         validation_alias=AliasChoices("score_golden_finger", "金手指是否能持续制造爽点"),
     )
-    score_tomato_fit: float = Field(
-        default=5.0,
-        ge=0.0,
-        le=10.0,
-        description="Fit for Fanqie readers",
-        validation_alias=AliasChoices("score_tomato_fit", "番茄适配度"),
-    )
+    platform_fit: dict[Platform, PlatformFit] = Field(default_factory=dict)
     score_ai_stability: float = Field(default=5.0, ge=0.0, le=10.0, description="Stability during AI-assisted writing")
-    score_video_potential: float = Field(
-        default=5.0,
-        ge=0.0,
-        le=10.0,
-        description="Short-form video potential",
-        validation_alias=AliasChoices("score_video_potential", "视频表现力"),
-    )
     score_breakdown_risk: float = Field(
         default=5.0,
         ge=0.0,
         le=10.0,
-        description="Risk of contradictions in a long novel",
+        description="Continuity stability in a long novel, with higher scores for lower risk",
         validation_alias=AliasChoices("score_breakdown_risk", "吃书/崩设定风险（越低越好）"),
-    )
-    total_score: float = Field(
-        default=0.0,
-        description="Combined score (auto-calculated)",
-        validation_alias=AliasChoices("total_score", "综合得分（自动计算）"),
     )
     human_note: str = Field(
         default="",
         description="Trade-offs for the author to consider",
         validation_alias=AliasChoices("human_note", "人工选择建议：每个题材适合什么取舍"),
+    )
+
+
+class TopicScoreCard(ConceptEvaluation):
+    score_tomato_fit: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=10.0,
+        description="Fit for Fanqie readers",
+        validation_alias=AliasChoices("score_tomato_fit", "番茄适配度"),
+    )
+    score_video_potential: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=10.0,
+        description="Short-form video potential",
+        validation_alias=AliasChoices("score_video_potential", "视频表现力"),
+    )
+    total_score: float = Field(
+        default=0.0,
+        description="Combined score (auto-calculated)",
+        validation_alias=AliasChoices("total_score", "综合得分（自动计算）"),
     )
 
 
@@ -322,7 +341,7 @@ class TopicScoringReport(BaseModel):
 # ============================================================
 
 
-class TitleSynopsisPair(BaseModel):
+class TitleSynopsisDraft(BaseModel):
     """A single title + synopsis candidate (Step 4A)."""
 
     title: str = Field(default="", description="Title", validation_alias=AliasChoices("title", "书名"))
@@ -341,20 +360,6 @@ class TitleSynopsisPair(BaseModel):
         description="Click appeal",
         validation_alias=AliasChoices("score_click_appeal", "吸点击感"),
     )
-    score_tomato_taste: float = Field(
-        default=5.0,
-        ge=0.0,
-        le=10.0,
-        description="Fit for free-to-read fiction on Fanqie",
-        validation_alias=AliasChoices("score_tomato_taste", "番茄免费文口味"),
-    )
-    score_video_spread: float = Field(
-        default=5.0,
-        ge=0.0,
-        le=10.0,
-        description="Potential to spread through short-form video",
-        validation_alias=AliasChoices("score_video_spread", "视频传播性"),
-    )
     score_ch1_conflict: float = Field(
         default=5.0,
         ge=0.0,
@@ -368,6 +373,23 @@ class TitleSynopsisPair(BaseModel):
         le=10.0,
         description="Goal of the opening arc",
         validation_alias=AliasChoices("score_10chapter_viable", "是否方便写出10章小事件闭环"),
+    )
+
+
+class TitleSynopsisPair(TitleSynopsisDraft):
+    score_tomato_taste: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=10.0,
+        description="Fit for free-to-read fiction on Fanqie",
+        validation_alias=AliasChoices("score_tomato_taste", "番茄免费文口味"),
+    )
+    score_video_spread: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=10.0,
+        description="Potential to spread through short-form video",
+        validation_alias=AliasChoices("score_video_spread", "视频传播性"),
     )
 
 

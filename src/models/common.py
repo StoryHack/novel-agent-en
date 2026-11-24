@@ -35,7 +35,7 @@ class WorkflowPhase(StrEnum):
 
     IDLE = "idle"
     # Upstream: commercial research pipeline
-    PLATFORM_SCAN = "platform_scan"  # Steps 1A/1B: Scan Feilu and Fanqie rankings
+    PLATFORM_SCAN = "platform_scan"  # Steps 1A/1B: Read the imported research snapshot
     TOPIC_SELECTION = "topic_selection"  # Steps 1C–4A: Compare rankings, analyze benchmarks, select concepts, and draft titles
     MINI_ARC_OUTLINE = "mini_arc_outline"  # Step 5: Outline a self-contained ten-chapter arc
     # Core pipeline
